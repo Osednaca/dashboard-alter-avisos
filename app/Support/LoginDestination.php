@@ -57,10 +57,6 @@ class LoginDestination
             if (! $user->hasPermission(...EnsureStaff::PERMISSIONS)) {
                 return $home;
             }
-        } elseif (in_array('business.context', $middleware, true)) {
-            if (! $user->businesses()->exists()) {
-                return $home;
-            }
         } else {
             return $home;
         }
@@ -70,7 +66,7 @@ class LoginDestination
                 if (! $user->hasPermission(...explode(',', substr($guard, strlen('permission:'))))) {
                     return $home;
                 }
-            } elseif (! in_array($guard, ['web', 'auth', 'staff', 'business.context'], true)) {
+            } elseif (! in_array($guard, ['web', 'auth', 'staff'], true)) {
                 return $home;
             }
         }

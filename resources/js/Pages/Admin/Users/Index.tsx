@@ -37,15 +37,13 @@ interface UserEntity {
     created_at: string | null;
 }
 
-const BUSINESS_ROLE = 'business-user';
-
 const roleLabels: Record<string, string> = {
     'super-admin': 'Super administrador',
     administrator: 'Administrador',
     operator: 'Operador',
     'campaign-manager': 'Gestor de campañas',
     support: 'Soporte',
-    'business-user': 'Usuario de negocio',
+    'business-user': 'Acceso anterior',
 };
 
 export default function UsersIndex({
@@ -58,7 +56,6 @@ export default function UsersIndex({
     options: {
         statuses: Option[];
         roles: Array<{ name: string; label: string }>;
-        businesses: Array<{ id: number; name: string }>;
     };
 }) {
     const [open, setOpen] = useState(false);
@@ -73,10 +70,7 @@ export default function UsersIndex({
         password: '',
         password_confirmation: '',
         roles: [] as string[],
-        business_id: '',
     });
-
-    const isBusinessUser = form.data.roles.includes(BUSINESS_ROLE);
 
     const applyFilter = (patch: Record<string, string>) => {
         const next: Record<string, string> = { ...filters, ...patch };
@@ -101,8 +95,7 @@ export default function UsersIndex({
             status: user.status.value,
             password: '',
             password_confirmation: '',
-            roles: user.roles,
-            business_id: user.business_id ? String(user.business_id) : '',
+            roles: user.roles.filter((role) => role !== 'business-user'),
         });
         form.clearErrors();
         setEditing(user);
@@ -274,7 +267,6 @@ export default function UsersIndex({
                                                     form.setData({
                                                         ...form.data,
                                                         roles: form.data.roles.filter((name) => name !== role.name),
-                                                        business_id: role.name === BUSINESS_ROLE ? '' : form.data.business_id,
                                                     });
                                                 }}
                                             />
@@ -284,31 +276,6 @@ export default function UsersIndex({
                                 })}
                             </div>
                         </FormField>
-
-                        {isBusinessUser ? (
-                            <FormField
-                                label="Negocio asignado"
-                                error={form.errors.business_id}
-                                hint="El usuario solo tendrá acceso a este negocio."
-                                className="sm:col-span-2"
-                            >
-                                <Select
-                                    value={form.data.business_id || undefined}
-                                    onValueChange={(value) => form.setData('business_id', value)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecciona un negocio" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {options.businesses.map((business) => (
-                                            <SelectItem key={business.id} value={String(business.id)}>
-                                                {business.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </FormField>
-                        ) : null}
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setOpen(false)}>

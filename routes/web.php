@@ -14,15 +14,7 @@ Route::get('updates/android/{filename}', [AndroidUpdateDownloadController::class
 Route::get('live/embed/{media}', [LiveEmbedController::class, 'show'])->middleware('signed')->name('live.embed');
 Route::get('live/preview', [LiveEmbedController::class, 'preview'])->middleware('signed')->name('live.preview');
 
-Route::get('/', function () {
-    $user = auth()->user();
-
-    if ($user && $user->hasPermission('business.dashboard.view') && ! $user->hasPermission('devices.view')) {
-        return redirect()->route('business.dashboard');
-    }
-
-    return redirect()->route('dashboard');
-});
+Route::get('/', fn () => redirect()->route('dashboard'));
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [LoginController::class, 'create'])->name('login');
@@ -36,7 +28,3 @@ Route::post('logout', [LoginController::class, 'destroy'])
 Route::middleware(['auth', 'staff'])
     ->prefix('admin')
     ->group(base_path('routes/admin.php'));
-
-Route::middleware(['auth', 'business.context'])
-    ->prefix('business')
-    ->group(base_path('routes/business.php'));

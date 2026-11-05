@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Domain\Users\Enums\UserStatus;
+use App\Http\Middleware\EnsureStaff;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -49,6 +50,14 @@ class LoginRequest extends FormRequest
 
             throw ValidationException::withMessages([
                 'email' => 'Esta cuenta está suspendida. Contacta al administrador.',
+            ]);
+        }
+
+        if (! $this->user()->hasPermission(...EnsureStaff::PERMISSIONS)) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'Esta cuenta no tiene acceso al panel de administración.',
             ]);
         }
 

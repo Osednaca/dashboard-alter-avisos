@@ -14,11 +14,7 @@ const messages: Record<number, { title: string; description: string }> = {
 export default function Error({ status }: { status: number }) {
     const message = messages[status] ?? messages[500];
     const user = usePage<PageProps>().props.auth.user;
-    const home = user
-        ? user.permissions.includes('business.dashboard.view') && !user.permissions.includes('devices.view')
-            ? '/business/dashboard'
-            : '/admin/dashboard'
-        : '/login';
+    const home = user ? '/admin/dashboard' : '/login';
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-canvas px-6 text-center">

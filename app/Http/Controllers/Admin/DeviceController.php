@@ -12,6 +12,7 @@ use App\Domain\Devices\Enums\DeviceStatus;
 use App\Domain\Devices\Models\Device;
 use App\Domain\Devices\Models\DeviceActivation;
 use App\Domain\Devices\Models\GlobalScreenPin;
+use App\Domain\Locations\Models\Location;
 use App\Domain\Media\Models\Layout;
 use App\Domain\Operations\Actions\RecordAudit;
 use App\Http\Controllers\Controller;
@@ -177,8 +178,8 @@ class DeviceController extends Controller
         app(RecordAudit::class)->handle('device.status.changed', $device, ['status' => $old->value], ['status' => $newStatus->value]);
 
         return back()->with('success', $newStatus === DeviceStatus::Disabled
-            ? 'Pantalla deshabilitada.'
-            : 'Pantalla habilitada.');
+            ? 'Aviso LED deshabilitado.'
+            : 'Aviso LED habilitado.');
     }
 
     public function revokeToken(Device $device): RedirectResponse
@@ -189,7 +190,7 @@ class DeviceController extends Controller
 
         app(RecordAudit::class)->handle('device.token.revoked', $device);
 
-        return back()->with('success', 'Acceso de la pantalla revocado. Deberá activarse de nuevo.');
+        return back()->with('success', 'Acceso del aviso LED revocado. Deberá activarse de nuevo.');
     }
 
     public function destroy(Device $device): RedirectResponse
@@ -204,7 +205,7 @@ class DeviceController extends Controller
             $device->delete();
         });
 
-        return redirect()->route('devices.index')->with('success', 'Pantalla eliminada.');
+        return redirect()->route('devices.index')->with('success', 'Aviso LED eliminado.');
     }
 
     public function activations(): Response
@@ -220,14 +221,7 @@ class DeviceController extends Controller
 
         return Inertia::render('Admin/Devices/Activations', [
             'activations' => $activations,
-            'businesses' => Business::query()
-                ->orderBy('name')
-                ->get(['id', 'name'])
-                ->map(fn ($business) => [
-                    'id' => $business->id,
-                    'name' => $business->name,
-                    'locations' => $business->locations()->get(['id', 'name'])->map(fn ($l) => ['id' => $l->id, 'name' => $l->name]),
-                ]),
+            'locations' => Location::query()->orderBy('city')->orderBy('name')->get(['id', 'name', 'city']),
         ]);
     }
 
@@ -236,21 +230,29 @@ class DeviceController extends Controller
         $this->authorize('update', new Device);
 
         $data = $request->validate([
-            'business_id' => ['required', 'integer', 'exists:businesses,id'],
             'location_id' => ['nullable', 'integer', 'exists:locations,id'],
             'device_name' => ['nullable', 'string', 'max:160'],
         ]);
 
+        // Existing installations retain the association required by the device schema.
+        // New unlocated notices use a private system record instead of a restaurant.
+        $businessId = ! empty($data['location_id'])
+            ? Location::query()->findOrFail($data['location_id'])->business_id
+            : ($activation->business_id ?? Business::query()->firstOrCreate(
+                ['slug' => 'avisos-led-interno'],
+                ['name' => 'Avisos LED', 'category' => 'other', 'status' => 'active', 'timezone' => config('app.timezone')],
+            )->id);
+
         app(AssignActivation::class)->handle(
             $activation,
-            $data['business_id'],
+            $businessId,
             $data['location_id'] ?? null,
             $data['device_name'] ?? null,
         );
 
         app(RecordAudit::class)->handle('device.activation.assigned', $activation, [], $data);
 
-        return back()->with('success', 'Código asignado. La pantalla ya puede confirmar su activación.');
+        return back()->with('success', 'Código asignado. El aviso LED ya puede confirmar su activación.');
     }
 
     public function revokeActivation(DeviceActivation $activation): RedirectResponse

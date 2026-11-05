@@ -2,11 +2,11 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Domain\Users\Enums\RoleEnum;
 use App\Domain\Users\Enums\UserStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\Validation\Validator;
 
 class UserRequest extends FormRequest
 {
@@ -29,19 +29,7 @@ class UserRequest extends FormRequest
             'status' => ['required', Rule::enum(UserStatus::class)],
             'password' => [$userId ? 'nullable' : 'required', 'confirmed', Password::min(10)->letters()->numbers()],
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['string', Rule::exists('roles', 'name')],
-            'business_id' => ['nullable', 'integer', 'exists:businesses,id'],
+            'roles.*' => ['string', Rule::exists('roles', 'name'), Rule::notIn([RoleEnum::BusinessUser->value])],
         ];
-    }
-
-    public function withValidator(Validator $validator): void
-    {
-        $validator->after(function (Validator $validator) {
-            $roles = $this->input('roles', []);
-
-            if (in_array('business-user', $roles, true) && ! $this->filled('business_id')) {
-                $validator->errors()->add('business_id', 'Asigna un negocio al usuario de negocio.');
-            }
-        });
     }
 }
