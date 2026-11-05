@@ -139,18 +139,14 @@ class DevicePreviewTest extends TestCase
         }
     }
 
-    public function test_preview_gets_never_rebuild_manifests_or_change_device_pointers(): void
+    public function test_admin_preview_get_never_rebuilds_manifests_or_changes_device_pointers(): void
     {
-        $business = Business::factory()->create();
-        $user = $this->businessUser($business);
-        $device = Device::factory()->create(['business_id' => $business->id]);
+        $device = Device::factory()->create();
         $this->confirm($device, $this->payload());
         $device->forceFill(['manifest_dirty' => true])->save();
         $before = $device->fresh()->getAttributes();
-        foreach (['/business/dashboard', '/business/preview', "/business/screens/{$device->id}"] as $url) {
-            $this->actingAs($user)->get($url)->assertOk()
-                ->assertInertia(fn ($page) => $page->where('preview.manifest_version', '100')->where('preview.layout.rotation', 90));
-        }
+        $this->actingAs($this->superAdmin())->get('/admin/dashboard?device='.$device->id)->assertOk()
+            ->assertInertia(fn ($page) => $page->where('screenPreview.manifest_version', '100')->where('screenPreview.layout.rotation', 90));
         $this->assertDatabaseCount('device_manifests', 1);
         $this->assertSame($before, $device->fresh()->getAttributes());
     }
@@ -173,22 +169,15 @@ class DevicePreviewTest extends TestCase
         $this->assertDatabaseCount('device_manifests', 2);
     }
 
-    public function test_business_selection_and_partial_refresh_cannot_leak_another_business_content(): void
+    public function test_removed_preview_routes_cannot_expose_another_account_content(): void
     {
         $business = Business::factory()->create();
-        $own = Device::factory()->create(['business_id' => $business->id]);
         $other = Device::factory()->create();
-        $this->confirm($own, $this->payload());
-        $this->confirm($other, $this->payload(0));
-        $user = $this->businessUser($business);
-        foreach (['/business/dashboard', '/business/preview'] as $url) {
-            $this->actingAs($user)->get($url.'?device='.$other->id)->assertOk()
-                ->assertInertia(fn ($page) => $page->where('preview.device.id', $own->id)->has('devices', 1));
+        $this->confirm($other, $this->payload());
+        $this->actingAs($this->businessUser($business));
+        foreach (['/business/dashboard', '/business/preview', "/business/screens/{$other->id}"] as $url) {
+            $this->get($url.'?device='.$other->id)->assertNotFound();
         }
-        $this->actingAs($user)->get('/business/preview?device='.$own->id, [
-            'X-Inertia-Version' => app(HandleInertiaRequests::class)->version(request()),
-            'X-Inertia' => 'true', 'X-Inertia-Partial-Component' => 'Business/Preview/Index', 'X-Inertia-Partial-Data' => 'preview',
-        ])->assertOk()->assertJsonPath('props.preview.device.id', $own->id)->assertJsonMissingPath('props.devices');
     }
 
     private function reportedState(array $overrides = []): array
@@ -246,7 +235,7 @@ class DevicePreviewTest extends TestCase
         }
     }
 
-    public function test_business_preview_polls_real_validated_state_then_hides_it_after_fifteen_seconds(): void
+    public function test_admin_preview_polls_real_validated_state_then_hides_it_after_fifteen_seconds(): void
     {
         $business = Business::factory()->create();
         $device = Device::factory()->online()->create(['business_id' => $business->id]);
@@ -263,13 +252,13 @@ class DevicePreviewTest extends TestCase
                 'item_id' => 'business-20', 'media_asset_id' => $video->id, 'position_ms' => 4321, 'duration_ms' => 10000]],
         ]);
         $before = $device->fresh()->getAttributes();
-        $user = $this->businessUser($business);
-        $this->actingAs($user)->get('/business/preview')->assertOk()->assertInertia(fn ($page) => $page
-            ->where('preview.status', 'reported')->where('preview.playback.zones.business.position_ms', 4321)
-            ->where('preview.business_media.url', '/actual-video.mp4'));
+        $user = $this->superAdmin();
+        $this->actingAs($user)->get('/admin/dashboard?device='.$device->id)->assertOk()->assertInertia(fn ($page) => $page
+            ->where('screenPreview.status', 'reported')->where('screenPreview.playback.zones.business.position_ms', 4321)
+            ->where('screenPreview.business_media.url', '/actual-video.mp4'));
         $this->travel(16)->seconds();
-        $this->actingAs($user)->get('/business/preview')->assertOk()->assertInertia(fn ($page) => $page
-            ->where('preview.status', 'stale')->where('preview.business_media', null)->has('preview.playback.zones', 0));
+        $this->actingAs($user)->get('/admin/dashboard?device='.$device->id)->assertOk()->assertInertia(fn ($page) => $page
+            ->where('screenPreview.status', 'stale')->where('screenPreview.business_media', null)->has('screenPreview.playback.zones', 0));
         $this->assertSame($before, $device->fresh()->getAttributes());
         $this->assertDatabaseCount('device_playback_states', 1);
     }
