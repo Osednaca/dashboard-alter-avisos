@@ -20,7 +20,7 @@ enum BusinessCategory: string
     public function label(): string
     {
         return match ($this) {
-            self::Restaurant => 'Restaurante',
+            self::Restaurant => 'Categoría anterior',
             self::Cafe => 'Cafetería',
             self::Bakery => 'Panadería',
             self::Bar => 'Bar',

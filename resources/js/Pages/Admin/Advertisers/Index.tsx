@@ -106,7 +106,7 @@ export default function AdvertisersIndex({
             ),
         },
         { key: 'campaigns', header: 'Campañas activas', cell: (row) => <span className="metric text-fg">{row.active_campaigns_count}</span> },
-        { key: 'screens', header: 'Pantallas alcanzadas', cell: (row) => <span className="metric text-fg">{row.total_screens}</span> },
+        { key: 'screens', header: 'Avisos LED alcanzados', cell: (row) => <span className="metric text-fg">{row.total_screens}</span> },
         {
             key: 'playbacks',
             header: 'Reproducciones',

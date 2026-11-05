@@ -73,7 +73,7 @@ class IngestPlaybackBatch
             $this->alerts->handle(
                 AlertType::RepeatedPlaybackErrors,
                 'Errores de reproducción repetidos',
-                "La pantalla «{$device->name}» reportó {$failures} errores en la última hora.",
+                "El aviso LED «{$device->name}» reportó {$failures} errores en la última hora.",
                 AlertSeverity::Warning,
                 $device,
                 ['failures_last_hour' => $failures],

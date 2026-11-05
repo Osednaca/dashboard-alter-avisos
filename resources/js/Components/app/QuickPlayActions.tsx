@@ -26,7 +26,7 @@ export function QuickPlayActions({ quickPlay, portal }: { quickPlay: QuickPlayEn
                 <Button variant="secondary" size="sm" disabled={form.processing}
                     onClick={() => form.post(`${basePath}/${quickPlay.id}/retry`, options)}>
                     <RotateCcw className="size-4" />
-                    {form.processing ? 'Procesando…' : 'Reintentar fallidas'}
+                    {form.processing ? 'Procesando…' : 'Reintentar fallidos'}
                 </Button>
             ) : null}
             {quickPlay.retry_id ? (

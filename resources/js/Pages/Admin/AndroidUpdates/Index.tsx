@@ -33,7 +33,7 @@ export default function AndroidUpdates({ currentUpdate }: { currentUpdate: Updat
         <AdminLayout>
             <Head title="Actualizaciones Android" />
             <PageHeader eyebrow="Administración" title="Actualizaciones Android"
-                description="Publica un APK firmado para actualizar las pantallas sin perder sus datos ni su sesión." />
+                description="Publica un APK firmado para actualizar los avisos LED sin perder sus datos ni su sesión." />
 
             <div className="mt-6 grid items-start gap-6 xl:grid-cols-2">
                 <Card>
@@ -72,7 +72,7 @@ export default function AndroidUpdates({ currentUpdate }: { currentUpdate: Updat
                                 error={form.errors.changelog} hint={`${changelogBytes} / ${MAX_CHANGELOG_BYTES} bytes de texto.`}>
                                 <Textarea id="android-update-changelog" rows={5} value={form.data.changelog}
                                     maxLength={MAX_CHANGELOG_BYTES} disabled={form.processing}
-                                    placeholder="Describe los cambios que verá el operador de la pantalla."
+                                    placeholder="Describe los cambios que verá el operador del aviso LED."
                                     onChange={(event) => {
                                         const value = event.target.value;
                                         form.setData('changelog', value);
@@ -83,7 +83,7 @@ export default function AndroidUpdates({ currentUpdate }: { currentUpdate: Updat
                                     }} />
                             </FormField>
                             <FormField label="Actualización obligatoria" htmlFor="android-update-force" error={form.errors.forceUpdate}
-                                hint="Las pantallas deberán actualizar para continuar. Android puede pedir confirmación para instalar.">
+                                hint="Los avisos LED deberán actualizar para continuar. Android puede pedir confirmación para instalar.">
                                 <Checkbox id="android-update-force" checked={form.data.forceUpdate} disabled={form.processing}
                                     onCheckedChange={(checked) => form.setData('forceUpdate', checked === true)} />
                             </FormField>
@@ -125,7 +125,7 @@ export default function AndroidUpdates({ currentUpdate }: { currentUpdate: Updat
                             </>
                         ) : <p className="text-sm text-muted">Todavía no hay una actualización publicada.</p>}
                         <p className="text-xs text-faint">
-                            El APK se publica primero y el manifiesto después. Las pantallas detectarán
+                            El APK se publica primero y el manifiesto después. Los avisos LED detectarán
                             la versión en su próxima consulta de actualizaciones.
                         </p>
                     </CardContent>

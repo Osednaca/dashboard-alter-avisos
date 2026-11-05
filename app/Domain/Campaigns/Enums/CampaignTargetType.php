@@ -21,7 +21,7 @@ enum CampaignTargetType: string
             self::City => 'Ciudad',
             self::State => 'Departamento',
             self::Country => 'País',
-            self::Device => 'Pantalla',
+            self::Device => 'Aviso LED',
         };
     }
 

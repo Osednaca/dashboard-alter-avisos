@@ -24,7 +24,7 @@ class RetryQuickPlay
                     ?? throw ValidationException::withMessages(['quick_play' => 'El reintento ya fue eliminado. Crea una nueva reproducción.']);
             }
             if (! $source->canRetry()) {
-                throw ValidationException::withMessages(['quick_play' => 'Solo puedes reintentar un envío finalizado con pantallas fallidas.']);
+                throw ValidationException::withMessages(['quick_play' => 'Solo puedes reintentar un envío finalizado con avisos LED fallidos.']);
             }
             $media = $source->mediaAsset;
             if (! $media) {

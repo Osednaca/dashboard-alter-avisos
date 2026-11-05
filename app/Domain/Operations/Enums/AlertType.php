@@ -15,11 +15,11 @@ enum AlertType: string
     public function label(): string
     {
         return match ($this) {
-            self::DeviceOffline => 'Pantalla desconectada',
+            self::DeviceOffline => 'Aviso LED desconectado',
             self::StorageLow => 'Almacenamiento bajo',
             self::MediaDownloadFailed => 'Fallo de descarga de contenido',
             self::CampaignWithoutCreatives => 'Campaña sin creatividades',
-            self::CampaignWithoutTargets => 'Campaña sin pantallas objetivo',
+            self::CampaignWithoutTargets => 'Campaña sin avisos LED objetivo',
             self::RepeatedPlaybackErrors => 'Errores de reproducción repetidos',
             self::SynchronizationFailed => 'Sincronización fallida',
         };

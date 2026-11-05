@@ -26,6 +26,6 @@ class GlobalScreenPinController extends Controller
         $setting->forceFill(['id' => 1, 'pin_hash' => Hash::make($request->validated('pin'))])->save();
         app(RecordAudit::class)->handle('screen.global_pin.updated');
 
-        return back()->with('success', 'PIN actualizado para todas las pantallas de todos los negocios.');
+        return back()->with('success', 'PIN actualizado para todos los avisos LED.');
     }
 }

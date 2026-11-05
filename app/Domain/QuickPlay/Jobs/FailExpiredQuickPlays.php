@@ -34,7 +34,7 @@ class FailExpiredQuickPlays implements ShouldQueue
                         $updateStatus->handle(
                             $row,
                             QuickPlayDeviceStatus::Failed,
-                            'Tiempo de espera agotado sin confirmación de la pantalla.',
+                            'Tiempo de espera agotado sin confirmación del aviso LED.',
                         );
                     }
 

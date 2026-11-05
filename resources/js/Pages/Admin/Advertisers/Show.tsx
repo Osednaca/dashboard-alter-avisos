@@ -45,7 +45,7 @@ export default function AdvertiserShow({
             ),
         },
         { key: 'status', header: 'Estado', cell: (row) => <StatusBadge value={row.status} /> },
-        { key: 'screens', header: 'Pantallas', cell: (row) => <span className="metric text-fg">{row.target_screen_count}</span> },
+        { key: 'screens', header: 'Avisos LED', cell: (row) => <span className="metric text-fg">{row.target_screen_count}</span> },
         { key: 'playbacks', header: 'Reproducciones', cell: (row) => <span className="metric text-fg">{formatNumber(row.playbacks_count)}</span> },
     ];
 
