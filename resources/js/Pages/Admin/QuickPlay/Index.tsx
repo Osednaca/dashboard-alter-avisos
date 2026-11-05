@@ -13,7 +13,6 @@ import { Button } from '@/Components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { usePermissions } from '@/Hooks/usePermissions';
 import { AdminLayout } from '@/Layouts/AdminLayout';
-import { BusinessLayout } from '@/Layouts/BusinessLayout';
 import type { Option, Paginated, QuickPlayEntity } from '@/Types';
 import { formatNumber, formatRelative } from '@/Utils/format';
 
@@ -21,16 +20,13 @@ export default function QuickPlayIndex({
     quickPlays,
     filters,
     statuses,
-    portal = 'admin',
 }: {
-    portal?: 'admin' | 'business';
     quickPlays: Paginated<QuickPlayEntity>;
     filters: { search?: string; status?: string };
     statuses: Option[];
 }) {
     const { can } = usePermissions();
-    const PageLayout = portal === 'business' ? BusinessLayout : AdminLayout;
-    const basePath = `/${portal}/quick-play`;
+    const basePath = '/admin/quick-play';
 
 
     const applyFilter = (patch: Record<string, string>) => {
@@ -63,7 +59,7 @@ export default function QuickPlayIndex({
         { key: 'scope', header: 'Destino', cell: (row) => <span className="text-muted">{row.scope.label}</span> },
         {
             key: 'targets',
-            header: 'Pantallas',
+            header: 'Avisos LED',
             cell: (row) => <span className="metric text-fg">{formatNumber(row.targets_count)}</span>,
         },
         {
@@ -75,7 +71,7 @@ export default function QuickPlayIndex({
                         <Play className="size-3" /> {row.delivered_count}
                     </span>
                     {row.failed_count > 0 ? (
-                        <span className="text-danger">{row.failed_count} fallidas</span>
+                        <span className="text-danger">{row.failed_count} fallidos</span>
                     ) : null}
                     {row.pending_count > 0 ? (
                         <span className="text-info">{row.pending_count} en curso</span>
@@ -92,7 +88,7 @@ export default function QuickPlayIndex({
             className: 'text-right',
             cell: (row) => (
                 <div className="flex justify-end gap-2" onClick={(event) => event.stopPropagation()}>
-                    <QuickPlayActions quickPlay={row} portal={portal} />
+                    <QuickPlayActions quickPlay={row} portal="admin" />
                     <ActionMenu items={[{ label: 'Ver entrega', icon: Eye, onSelect: () => router.visit(`${basePath}/${row.id}`) }]} />
                 </div>
             ),
@@ -100,15 +96,15 @@ export default function QuickPlayIndex({
     ];
 
     return (
-        <PageLayout>
+        <AdminLayout>
             <Head title="Reproducción inmediata" />
 
             <PageHeader
                 eyebrow="Operación"
                 title="Reproducción inmediata"
-                description="Envía una imagen o video al instante a una o varias pantallas, sin crear una campaña."
+                description="Envía una imagen o video al instante a uno o varios avisos LED, sin crear una campaña."
                 actions={
-                    can(portal === 'business' ? 'business.playlists.manage' : 'quick_play.send') ? (
+                    can('quick_play.send') ? (
                         <Button variant="primary" size="sm" asChild>
                             <Link href={`${basePath}/create`}>
                                 <Zap className="size-4" />
@@ -122,8 +118,7 @@ export default function QuickPlayIndex({
             <div className="mt-4 rounded-card border border-line bg-surface p-4 text-xs text-muted">
                 <p className="flex items-start gap-2">
                     <Zap className="size-3.5 shrink-0 text-accent" />
-                    Al terminar, cada pantalla vuelve automáticamente a su playlist y layout programados. En modo
-                    pantalla completa se restaura el layout anterior.
+                    Al terminar, cada aviso LED vuelve automáticamente a su contenido programado.
                 </p>
             </div>
 
@@ -154,13 +149,13 @@ export default function QuickPlayIndex({
                             <EmptyState
                                 icon={ImageIcon}
                                 title="Sin reproducciones inmediatas"
-                                description="Envía contenido puntual a las pantallas sin crear una campaña."
+                                description="Envía contenido puntual a los avisos LED sin crear una campaña."
                             />
                         }
                     />
                 </div>
                 <Pagination paginator={quickPlays} />
             </div>
-        </PageLayout>
+        </AdminLayout>
     );
 }

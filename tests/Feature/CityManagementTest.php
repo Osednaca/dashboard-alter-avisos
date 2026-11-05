@@ -26,6 +26,7 @@ class CityManagementTest extends TestCase
             'timezone' => 'America/Bogota', 'status' => 'active', ...$attributes,
         ]);
         $city->businesses()->sync($businessIds);
+        $city->devices()->sync(Device::query()->whereIn('business_id', $businessIds)->pluck('id'));
 
         return $city;
     }
@@ -33,7 +34,7 @@ class CityManagementTest extends TestCase
     private function input(array $ids, array $overrides = []): array
     {
         return ['name' => 'Bogotá', 'state' => 'Cundinamarca', 'country' => 'Colombia',
-            'timezone' => 'America/Bogota', 'status' => 'active', 'business_ids' => $ids, ...$overrides];
+            'timezone' => 'America/Bogota', 'status' => 'active', 'device_ids' => $ids, ...$overrides];
     }
 
     private function campaign(array $target): Campaign
@@ -64,20 +65,20 @@ class CityManagementTest extends TestCase
         $branch = Location::factory()->create();
         $other = Business::factory()->create();
         $device = Device::factory()->online()->create(['business_id' => $other->id, 'location_id' => null]);
-        $this->actingAs($this->superAdmin())->post('/admin/locations', $this->input([$branch->business_id, $other->id]))
+        $this->actingAs($this->superAdmin())->post('/admin/locations', $this->input([$device->id]))
             ->assertRedirect()->assertSessionHasNoErrors();
         $city = City::query()->sole();
-        $this->assertCount(2, $city->businesses);
+        $this->assertCount(1, $city->devices);
         $this->get('/admin/locations')->assertOk()->assertInertia(fn ($page) => $page
-            ->has('locations.data.0.businesses', 2)->where('locations.data.0.devices_count', 1));
+            ->has('locations.data.0.devices', 1)->where('locations.data.0.devices_count', 1));
         $this->get("/admin/locations/{$city->id}")->assertOk()->assertInertia(fn ($page) => $page
-            ->where('devices.0.id', $device->id)->has('location.businesses', 2));
+            ->where('devices.0.id', $device->id)->has('location.devices', 1));
         $this->delete("/admin/locations/{$city->id}")->assertRedirect('/admin/locations');
         $this->assertSoftDeleted('cities', ['id' => $city->id]);
         $this->assertDatabaseHas('locations', ['id' => $branch->id, 'business_id' => $branch->business_id]);
         $this->assertDatabaseHas('devices', ['id' => $device->id]);
-        $this->assertDatabaseCount('city_business', 0);
-        $this->post('/admin/locations', $this->input([$other->id]))->assertSessionHasErrors('name');
+        $this->assertDatabaseHas('city_device', ['city_id' => $city->id, 'device_id' => $device->id]);
+        $this->post('/admin/locations', $this->input([$device->id]))->assertSessionHasErrors('name');
     }
 
     public function test_business_users_cannot_manage_or_read_admin_cities_and_invalid_membership_is_atomic(): void
@@ -85,12 +86,12 @@ class CityManagementTest extends TestCase
         $business = Business::factory()->create();
         $city = $this->city([$business->id]);
         $this->actingAs($this->businessUser($business))->get('/admin/locations')->assertForbidden();
-        $this->put("/admin/locations/{$city->id}", $this->input([$business->id]))->assertForbidden();
+        $this->put("/admin/locations/{$city->id}", $this->input([]))->assertForbidden();
         $this->delete("/admin/locations/{$city->id}")->assertForbidden();
         $this->actingAs($this->superAdmin())->put("/admin/locations/{$city->id}", $this->input([999999]))
-            ->assertSessionHasErrors('business_ids.0');
+            ->assertSessionHasErrors('device_ids.0');
         $this->assertSame([$business->id], $city->businesses()->pluck('businesses.id')->all());
-        $this->post('/admin/locations', $this->input([], ['name' => 'Cali']))->assertSessionHasErrors('business_ids');
+        $this->post('/admin/locations', $this->input([], ['name' => 'Cali']))->assertSessionHasNoErrors();
     }
 
     public function test_city_id_and_legacy_name_reach_every_eligible_screen_of_assigned_businesses(): void
@@ -120,7 +121,7 @@ class CityManagementTest extends TestCase
         $this->assertSame([$device->id], $this->resolved($campaign));
         $city = $this->city();
         $this->assertSame([], $this->resolved($campaign));
-        $city->businesses()->sync([$branch->business_id]);
+        $city->devices()->sync([$device->id]);
         $city->update(['status' => 'inactive']);
         $this->assertSame([], $this->resolved($campaign));
         $city->update(['status' => 'active']);
@@ -179,16 +180,16 @@ class CityManagementTest extends TestCase
         app(PublishCampaign::class)->handle($campaign);
         $this->assertSame([$campaign->id], array_column($this->poll($old), 'id'));
         $this->assertSame([], $this->poll($new));
-        $this->actingAs($this->superAdmin())->put("/admin/locations/{$city->id}", $this->input([$new->business_id], ['name' => 'Bogotá renombrada']))
+        $this->actingAs($this->superAdmin())->put("/admin/locations/{$city->id}", $this->input([$new->id], ['name' => 'Bogotá renombrada']))
             ->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame(1, $campaign->fresh()->target_screen_count);
         $this->assertSame([], $this->poll($old));
         $this->assertSame([$campaign->id], array_column($this->poll($new), 'id'));
-        $this->actingAs($this->superAdmin())->put("/admin/locations/{$city->id}", $this->input([$new->business_id], ['name' => 'Bogotá renombrada', 'status' => 'inactive']))
+        $this->actingAs($this->superAdmin())->put("/admin/locations/{$city->id}", $this->input([$new->id], ['name' => 'Bogotá renombrada', 'status' => 'inactive']))
             ->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame(0, $campaign->fresh()->target_screen_count);
         $this->assertSame([], $this->poll($new));
-        $this->actingAs($this->superAdmin())->put("/admin/locations/{$city->id}", $this->input([$new->business_id], ['name' => 'Bogotá renombrada']))
+        $this->actingAs($this->superAdmin())->put("/admin/locations/{$city->id}", $this->input([$new->id], ['name' => 'Bogotá renombrada']))
             ->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame([$campaign->id], array_column($this->poll($new), 'id'));
         $this->actingAs($this->superAdmin())->delete("/admin/locations/{$city->id}")->assertRedirect();
@@ -240,11 +241,25 @@ class CityManagementTest extends TestCase
         $device = Device::factory()->online()->create(['location_id' => null]);
         $city = $this->city([$device->business_id]);
         $campaign = $this->campaign(['target_value' => 'Bogotá']);
-        $this->actingAs($this->superAdmin())->put("/admin/locations/{$city->id}", $this->input([$device->business_id], ['name' => 'Bogotá nueva']))
+        $this->actingAs($this->superAdmin())->put("/admin/locations/{$city->id}", $this->input([$device->id], ['name' => 'Bogotá nueva']))
             ->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame($city->id, $campaign->targets()->sole()->target_id);
         $this->assertNull($campaign->targets()->sole()->target_value);
         $this->assertSame([$device->id], $this->resolved($campaign));
+    }
+
+    public function test_direct_city_membership_does_not_expand_to_other_devices_of_the_same_legacy_business(): void
+    {
+        $business = Business::factory()->create();
+        $a = Device::factory()->online()->create(['business_id' => $business->id]);
+        $b = Device::factory()->online()->create(['business_id' => $business->id]);
+        $city = $this->city();
+        $city->devices()->sync([$a->id]);
+        $this->assertSame([$a->id], $this->resolved($this->campaign(['target_id' => $city->id])));
+        $campaign = $this->campaign(['target_id' => $city->id, 'is_exclusion' => true]);
+        $campaign->targets()->create(['target_type' => 'device', 'target_id' => $a->id]);
+        $campaign->targets()->create(['target_type' => 'device', 'target_id' => $b->id]);
+        $this->assertSame([$b->id], $this->resolved($campaign));
     }
 
     public function test_additive_migration_backfills_unique_regions_and_memberships_without_touching_branch_ids(): void
@@ -257,10 +272,13 @@ class CityManagementTest extends TestCase
         Device::factory()->online()->create(['business_id' => $branch->business_id, 'location_id' => null]);
         $campaign = $this->campaign(['target_value' => 'Bogotá']);
         $campaign->forceFill(['target_screen_count' => 1])->save();
+        $newMigration = require database_path('migrations/2026_11_05_214431_create_city_device_table.php');
+        $newMigration->down();
         $migration = require database_path('migrations/2026_10_07_120000_create_cities_tables.php');
         // Only this test's isolated in-memory DB; exercise up/down with pre-existing branches.
         $migration->down();
         $migration->up();
+        $newMigration->up();
         $this->assertDatabaseCount('cities', 2);
         $this->assertDatabaseCount('city_business', 3);
         $city = City::query()->where('state', '')->sole();
@@ -268,6 +286,8 @@ class CityManagementTest extends TestCase
         $this->assertSame($branch->id, $device->fresh()->location_id);
         $this->assertTrue($device->fresh()->manifest_dirty);
         $this->assertSame(2, $campaign->fresh()->target_screen_count);
+        $this->assertEqualsCanonicalizing([$device->id], $city->devices()->where('devices.id', $device->id)->pluck('devices.id')->all());
+        $newMigration->down();
         $migration->down();
         $this->assertDatabaseCount('locations', 4);
         $this->assertSame($branch->id, $device->fresh()->location_id);

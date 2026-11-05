@@ -23,8 +23,8 @@ export default function CampaignsIndex({
     options,
 }: {
     campaigns: Paginated<CampaignEntity>;
-    filters: { search?: string; status?: string; advertiser_id?: string; city?: string; category?: string };
-    options: { statuses: Option[]; advertisers: Array<{ id: number; name: string }>; cities: string[]; categories: Option[] };
+    filters: { search?: string; status?: string; advertiser_id?: string; city?: string };
+    options: { statuses: Option[]; advertisers: Array<{ id: number; name: string }>; cities: string[] };
 }) {
     const { can } = usePermissions();
     const [deleting, setDeleting] = useState<CampaignEntity | null>(null);
@@ -56,7 +56,7 @@ export default function CampaignsIndex({
         },
         { key: 'status', header: 'Estado', cell: (row) => <StatusBadge value={row.status} /> },
         { key: 'schedule', header: 'Programación', cell: (row) => <span className="text-xs text-muted">{row.schedule_label}</span> },
-        { key: 'screens', header: 'Pantallas', cell: (row) => <span className="metric text-fg">{row.target_screen_count}</span> },
+        { key: 'screens', header: 'Avisos LED', cell: (row) => <span className="metric text-fg">{row.target_screen_count}</span> },
         { key: 'playbacks', header: 'Reproducciones', cell: (row) => <span className="metric text-fg">{formatNumber(row.playbacks_count)}</span> },
         {
             key: 'progress',
@@ -166,19 +166,6 @@ export default function CampaignsIndex({
                             {options.cities.map((city) => (
                                 <SelectItem key={city} value={city}>
                                     {city}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select value={filters.category ?? 'all'} onValueChange={(value) => applyFilter({ category: value === 'all' ? '' : value })}>
-                        <SelectTrigger className="w-full sm:w-44">
-                            <SelectValue placeholder="Categoría" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todas las categorías</SelectItem>
-                            {options.categories.map((category) => (
-                                <SelectItem key={category.value} value={category.value}>
-                                    {category.label}
                                 </SelectItem>
                             ))}
                         </SelectContent>

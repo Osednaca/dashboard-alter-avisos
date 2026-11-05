@@ -19,7 +19,7 @@ import { AdminLayout } from '@/Layouts/AdminLayout';
 import type { Option, Paginated } from '@/Types';
 import type { CityEntity } from '@/Types/city';
 
-interface OptionBusiness {
+interface OptionDevice {
     id: number;
     name: string;
 }
@@ -30,15 +30,15 @@ export default function LocationsIndex({
     options,
 }: {
     locations: Paginated<CityEntity>;
-    filters: { search?: string; status?: string; business_id?: string };
-    options: { statuses: Option[]; businesses: OptionBusiness[] };
+    filters: { search?: string; status?: string };
+    options: { statuses: Option[]; devices: OptionDevice[] };
 }) {
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<CityEntity | null>(null);
     const [deleting, setDeleting] = useState<CityEntity | null>(null);
 
     const form = useForm({
-        business_ids: [] as number[],
+        device_ids: [] as number[],
         name: '',
         state: '',
         country: 'Colombia',
@@ -63,7 +63,7 @@ export default function LocationsIndex({
 
     const openEdit = (location: CityEntity) => {
         form.setData({
-            business_ids: location.businesses.map((business) => business.id),
+            device_ids: location.devices.map((device) => device.id),
             name: location.name,
             state: location.state ?? '',
             country: location.country,
@@ -99,14 +99,13 @@ export default function LocationsIndex({
                     <Link href={`/admin/locations/${row.id}`} className="block truncate font-medium text-fg hover:text-accent">
                         {row.name}
                     </Link>
-                    <span className="block truncate text-xs text-faint">{row.businesses.map((business) => business.name).join(', ') || 'Sin negocios'}</span>
                 </div>
             ),
         },
         { key: 'region', header: 'Región', cell: (row) => <span className="text-muted">{[row.state, row.country].filter(Boolean).join(', ')}</span> },
         {
             key: 'screens',
-            header: 'Pantallas',
+            header: 'Avisos LED',
             cell: (row) => (
                 <span className="inline-flex items-center gap-1.5 text-muted">
                     <MonitorPlay className="size-3.5 text-faint" />
@@ -140,7 +139,7 @@ export default function LocationsIndex({
 
             <PageHeader
                 title="Ubicaciones · ciudades"
-                description="Ciudades que agrupan negocios para segmentar campañas."
+                description="Asigna avisos LED a ciudades para segmentar campañas."
                 actions={
                     <Button variant="primary" size="sm" onClick={openCreate}>
                         <Plus className="size-4" />
@@ -151,19 +150,6 @@ export default function LocationsIndex({
 
             <div className="mt-6 rounded-card border border-line bg-card p-4">
                 <FilterBar search={filters.search} onSearch={(value) => applyFilter({ search: value })} searchPlaceholder="Buscar por ciudad o departamento…">
-                    <Select value={filters.business_id ?? 'all'} onValueChange={(value) => applyFilter({ business_id: value === 'all' ? '' : value })}>
-                        <SelectTrigger className="w-full sm:w-48">
-                            <SelectValue placeholder="Negocio" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todos los negocios</SelectItem>
-                            {options.businesses.map((business) => (
-                                <SelectItem key={business.id} value={String(business.id)}>
-                                    {business.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
                 </FilterBar>
 
                 <div className="mt-4">
@@ -183,19 +169,19 @@ export default function LocationsIndex({
                         <DialogTitle>{editing ? 'Editar ciudad' : 'Nueva ciudad'}</DialogTitle>
                     </DialogHeader>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <FormField label="Negocios asignados" error={form.errors.business_ids} className="sm:col-span-2">
-                            <p className="mb-2 text-xs text-muted">La campaña se reproducirá en todas las pantallas de los negocios seleccionados.</p>
+                        <FormField label="Avisos LED asignados" error={form.errors.device_ids} className="sm:col-span-2">
+                            <p className="mb-2 text-xs text-muted">La campaña se reproducirá en los avisos LED seleccionados.</p>
                             <div className="max-h-48 space-y-2 overflow-y-auto rounded-control border border-line p-3">
-                                {options.businesses.map((business) => (
-                                    <label key={business.id} className="flex items-center gap-2 text-sm text-fg">
-                                        <input type="checkbox" checked={form.data.business_ids.includes(business.id)}
-                                            onChange={(event) => form.setData('business_ids', event.target.checked
-                                                ? [...form.data.business_ids, business.id]
-                                                : form.data.business_ids.filter((id) => id !== business.id))} />
-                                        {business.name}
+                                {options.devices.map((device) => (
+                                    <label key={device.id} className="flex items-center gap-2 text-sm text-fg">
+                                        <input type="checkbox" checked={form.data.device_ids.includes(device.id)}
+                                            onChange={(event) => form.setData('device_ids', event.target.checked
+                                                ? [...form.data.device_ids, device.id]
+                                                : form.data.device_ids.filter((id) => id !== device.id))} />
+                                        {device.name}
                                     </label>
                                 ))}
-                                {options.businesses.length === 0 ? <p className="text-xs text-muted">Crea un negocio antes de asignarlo.</p> : null}
+                                {options.devices.length === 0 ? <p className="text-xs text-muted">Activa un aviso LED para asignarlo.</p> : null}
                             </div>
                         </FormField>
                         <FormField label="Ciudad" error={form.errors.name}>
@@ -240,7 +226,7 @@ export default function LocationsIndex({
                 open={!!deleting}
                 onOpenChange={(value) => (!value ? setDeleting(null) : null)}
                 title={`Eliminar ${deleting?.name ?? ''}`}
-                description="Se quitará esta ciudad de la segmentación. Los negocios, sucursales y pantallas se conservarán."
+                description="Se quitará esta ciudad de la segmentación. Los avisos LED y sus datos se conservarán."
                 confirmLabel="Eliminar ciudad"
                 onConfirm={() => {
                     if (!deleting) return;

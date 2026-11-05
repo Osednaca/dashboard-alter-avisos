@@ -13,7 +13,6 @@ class EnsureStaff
      * kept out of the administrative area entirely while staff pass through.
      */
     public const PERMISSIONS = [
-        'businesses.view',
         'locations.view',
         'devices.view',
         'campaigns.view',

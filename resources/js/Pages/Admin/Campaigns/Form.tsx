@@ -33,11 +33,8 @@ interface Options {
     advertisers: Array<{ id: number; name: string; status: { value: string; label: string } }>;
     creatives: MediaEntity[];
     cities: Array<{ id: number; name: string; state: string; country: string }>;
-    categories: Option[];
-    businesses: Array<{ id: number; name: string }>;
-    locations: Array<{ id: number; name: string; city: string; business: string | null }>;
-    devices: Array<{ id: number; name: string; business: string | null }>;
-    counts: { screens: number; businesses: number; locations: number; cities: number };
+    devices: Array<{ id: number; name: string }>;
+    counts: { screens: number; cities: number };
 }
 
 const steps = [
@@ -51,12 +48,7 @@ const steps = [
 
 const targetTypes: Option[] = [
     { value: 'city', label: 'Ubicación (ciudad)' },
-    { value: 'business_category', label: 'Categoría' },
-    { value: 'business', label: 'Negocio' },
-    { value: 'location', label: 'Sucursal' },
     { value: 'device', label: 'Aviso LED' },
-    { value: 'state', label: 'Departamento' },
-    { value: 'country', label: 'País' },
 ];
 
 const weekDays = [
@@ -74,8 +66,8 @@ export default function CampaignForm({ campaign, options, selectedMedia = [] }: 
     const [addedSources, setAddedSources] = useState<MediaEntity[]>([]);
     const creativeOptions = [...addedSources, ...options.creatives];
     const [step, setStep] = useState(0);
-    const [summary, setSummary] = useState<{ screens: number; businesses: number; locations: number; cities: number } | null>(
-        campaign ? { screens: campaign.target_screen_count, businesses: 0, locations: 0, cities: 0 } : null,
+    const [summary, setSummary] = useState<{ screens: number; cities: number } | null>(
+        campaign ? { screens: campaign.target_screen_count, cities: 0 } : null,
     );
 
     const form = useForm(initialCampaignValues(campaign, selectedMedia));
@@ -140,7 +132,7 @@ export default function CampaignForm({ campaign, options, selectedMedia = [] }: 
     const canAdvance = () => {
         if (step === 0) return data.name.length > 2 && !!data.advertiser_id && !!data.starts_at && !!data.ends_at;
         if (step === 1) return data.creatives.length > 0;
-        if (step === 2) return data.targets.length > 0;
+        if (step === 2) return data.targets.length > 0 || !!campaign?.has_legacy_targets;
         return true;
     };
 
@@ -326,6 +318,7 @@ export default function CampaignForm({ campaign, options, selectedMedia = [] }: 
                         <TargetBuilder
                             targets={data.targets}
                             options={options}
+                            hasLegacyTargets={!!campaign?.has_legacy_targets}
                             onAdd={addTarget}
                             onRemove={(index) => setData('targets', data.targets.filter((_, i) => i !== index))}
                         />
@@ -406,11 +399,10 @@ export default function CampaignForm({ campaign, options, selectedMedia = [] }: 
 
                     {step === 5 ? (
                         <div className="space-y-5">
+                            {campaign?.has_legacy_targets ? <p className="text-xs text-muted">Esta campaña conserva segmentación anterior. La estimación solo incluye las reglas visibles.</p> : null}
                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                                 {[
                                     { label: 'Avisos LED', value: summary?.screens ?? 0, icon: Target },
-                                    { label: 'Negocios', value: summary?.businesses ?? 0, icon: Target },
-                                    { label: 'Ubicaciones', value: summary?.locations ?? 0, icon: Target },
                                     { label: 'Ciudades', value: summary?.cities ?? 0, icon: CalendarDays },
                                 ].map((item) => (
                                     <div key={item.label} className="rounded-control border border-line bg-surface px-3 py-3">
@@ -462,11 +454,13 @@ export default function CampaignForm({ campaign, options, selectedMedia = [] }: 
 function TargetBuilder({
     targets,
     options,
+    hasLegacyTargets,
     onAdd,
     onRemove,
 }: {
     targets: TargetInput[];
     options: Options;
+    hasLegacyTargets: boolean;
     onAdd: (target: TargetInput) => void;
     onRemove: (index: number) => void;
 }) {
@@ -476,20 +470,15 @@ function TargetBuilder({
         switch (type) {
             case 'city':
                 return options.cities.map((city) => ({ value: String(city.id), label: [city.name, city.state, city.country].filter(Boolean).join(' · ') }));
-            case 'business_category':
-                return options.categories.map((category) => ({ value: category.value, label: category.label }));
-            case 'business':
-                return options.businesses.map((business) => ({ value: String(business.id), label: business.name }));
-            case 'location':
-                return options.locations.map((location) => ({ value: String(location.id), label: `${location.name} · ${location.city}` }));
+
             case 'device':
-                return options.devices.map((device) => ({ value: String(device.id), label: `${device.name}${device.business ? ` · ${device.business}` : ''}` }));
+                return options.devices.map((device) => ({ value: String(device.id), label: device.name }));
             default:
                 return [];
         }
     };
 
-    const isEntity = ['city', 'business', 'location', 'device'].includes(draft.target_type);
+    const isEntity = ['city', 'device'].includes(draft.target_type);
     const draftOptions = optionsFor(draft.target_type);
 
     const add = () => {
@@ -570,10 +559,11 @@ function TargetBuilder({
             </div>
 
             <div>
+                {hasLegacyTargets ? <p className="mb-2 text-xs text-muted">Esta campaña conserva segmentación anterior al guardar.</p> : null}
                 <p className="mb-2 text-xs text-muted">Reglas de segmentación ({targets.length})</p>
                 {targets.length === 0 ? (
                     <p className="rounded-control border border-dashed border-line px-4 py-6 text-center text-xs text-faint">
-                        Añade al menos una regla. Las reglas de inclusión se combinan con «o»; las exclusiones restan.
+                        {hasLegacyTargets ? 'No hay reglas nuevas.' : 'Añade al menos una regla.'} Las reglas de inclusión se combinan con «o»; las exclusiones restan.
                     </p>
                 ) : (
                     <div className="flex flex-wrap gap-2">
@@ -586,9 +576,11 @@ function TargetBuilder({
                                 )}
                             >
                                 {target.is_exclusion ? 'Excluye ' : ''}
-                                {targetTypes.find((type) => type.value === target.target_type)?.label}
-                                {target.target_id ? `: ${optionsFor(target.target_type).find((option) => option.value === String(target.target_id))?.label ?? `#${target.target_id}`}` : ''}
-                                {target.target_value ? `: ${target.target_value}` : ''}
+                                {targetTypes.some((type) => type.value === target.target_type) ? (
+                                    <>{targetTypes.find((type) => type.value === target.target_type)?.label}
+                                    {target.target_id ? `: ${optionsFor(target.target_type).find((option) => option.value === String(target.target_id))?.label ?? `#${target.target_id}`}` : ''}
+                                    {target.target_value ? `: ${target.target_value}` : ''}</>
+                                ) : 'Segmentación anterior'}
                                 <button type="button" onClick={() => onRemove(index)} aria-label="Quitar">
                                     <X className="size-3" />
                                 </button>
@@ -600,7 +592,7 @@ function TargetBuilder({
 
             <p className="flex items-center gap-2 text-[11px] text-faint">
                 <ImageIcon className="size-3.5" />
-                La red cuenta con {formatNumber(options.counts.screens)} avisos LED, {options.counts.businesses} negocios y{' '}
+                La red cuenta con {formatNumber(options.counts.screens)} avisos LED y{' '}
                 {options.counts.cities} ciudades disponibles.
             </p>
         </div>

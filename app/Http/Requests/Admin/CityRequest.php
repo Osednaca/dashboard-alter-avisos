@@ -28,8 +28,8 @@ class CityRequest extends FormRequest
             'country' => ['required', 'string', 'max:120'],
             'timezone' => ['required', 'string', 'timezone'],
             'status' => ['required', Rule::enum(LocationStatus::class)],
-            'business_ids' => ['required', 'array', 'min:1'],
-            'business_ids.*' => ['required', 'integer', 'distinct', 'exists:businesses,id'],
+            'device_ids' => ['present', 'array', 'max:5000'],
+            'device_ids.*' => ['required', 'integer', 'distinct', 'exists:devices,id'],
         ];
     }
 

@@ -45,7 +45,7 @@ const iconMap: Record<string, LucideIcon> = {
 
 export function SearchCommand({
     endpoint = '/admin/search',
-    placeholder = 'Buscar negocios, pantallas, campañas, anunciantes…',
+    placeholder = 'Buscar avisos LED, campañas, anunciantes…',
 }: {
     endpoint?: string;
     placeholder?: string;

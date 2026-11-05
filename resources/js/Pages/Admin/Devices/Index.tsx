@@ -17,19 +17,14 @@ import { usePermissions } from '@/Hooks/usePermissions';
 import type { DeviceEntity, Option, Paginated } from '@/Types';
 import { formatBytes, formatRelative } from '@/Utils/format';
 
-interface BusinessOption {
-    id: number;
-    name: string;
-}
-
 export default function DevicesIndex({
     devices,
     filters,
     options,
 }: {
     devices: Paginated<DeviceEntity>;
-    filters: { search?: string; status?: string; business_id?: string; city?: string; app_version?: string };
-    options: { statuses: Option[]; businesses: BusinessOption[]; cities: string[]; appVersions: string[] };
+    filters: { search?: string; status?: string; city?: string; app_version?: string };
+    options: { statuses: Option[]; cities: string[]; appVersions: string[] };
 }) {
     const { can } = usePermissions();
     const [deletingDevice, setDeletingDevice] = useState<DeviceEntity | null>(null);
@@ -44,7 +39,7 @@ export default function DevicesIndex({
     const columns: Array<Column<DeviceEntity>> = [
         {
             key: 'name',
-            header: 'Pantalla',
+            header: 'Aviso LED',
             cell: (row) => (
                 <div className="flex items-center gap-3">
                     <span className="relative flex size-9 items-center justify-center rounded-control border border-line bg-surface text-accent">
@@ -70,14 +65,12 @@ export default function DevicesIndex({
                 </div>
             ),
         },
-        { key: 'business', header: 'Negocio', cell: (row) => <span className="truncate text-muted">{row.business?.name ?? '—'}</span> },
         {
-            key: 'location',
-            header: 'Ubicación',
+            key: 'cities',
+            header: 'Ciudades',
             cell: (row) => (
                 <span className="truncate text-muted">
-                    {row.location?.name ?? '—'}
-                    {row.location?.city ? <span className="text-faint"> · {row.location.city}</span> : null}
+                    {row.cities?.map((city) => city.name).join(', ') || 'Sin ciudad'}
                 </span>
             ),
         },
@@ -131,7 +124,7 @@ export default function DevicesIndex({
                                 },
                             },
                             {
-                                label: 'Eliminar pantalla',
+                                label: 'Eliminar aviso LED',
                                 icon: Trash2,
                                 variant: 'danger',
                                 hidden: !can('devices.manage'),
@@ -146,10 +139,10 @@ export default function DevicesIndex({
 
     return (
         <AdminLayout>
-            <Head title="Pantallas" />
+            <Head title="Avisos LED" />
 
             <PageHeader
-                title="Pantallas"
+                title="Avisos LED"
                 description="Dispositivos Android TV instalados en la red."
                 actions={
                     <>
@@ -179,19 +172,6 @@ export default function DevicesIndex({
                             {options.statuses.map((status) => (
                                 <SelectItem key={status.value} value={status.value}>
                                     {status.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select value={filters.business_id ?? 'all'} onValueChange={(value) => applyFilter({ business_id: value === 'all' ? '' : value })}>
-                        <SelectTrigger className="w-full sm:w-48">
-                            <SelectValue placeholder="Negocio" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todos los negocios</SelectItem>
-                            {options.businesses.map((business) => (
-                                <SelectItem key={business.id} value={String(business.id)}>
-                                    {business.name}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -234,7 +214,7 @@ export default function DevicesIndex({
                         rows={devices.data}
                         keyExtractor={(row) => row.id}
                         onRowClick={(row) => router.visit(`/admin/devices/${row.id}`)}
-                        empty={<EmptyState icon={MonitorPlay} title="Sin pantallas" description="Ajusta los filtros o activa una nueva pantalla." />}
+                        empty={<EmptyState icon={MonitorPlay} title="Sin avisos LED" description="Ajusta los filtros o activa un nuevo aviso LED." />}
                     />
                 </div>
                 <Pagination paginator={devices} />
@@ -242,9 +222,9 @@ export default function DevicesIndex({
             <ConfirmDialog
                 open={deletingDevice !== null}
                 onOpenChange={(open) => { if (!open) setDeletingDevice(null); }}
-                title="Eliminar pantalla"
+                title="Eliminar aviso LED"
                 description={`¿Eliminar «${deletingDevice?.name ?? ''}»? Se borrarán sus reportes, comandos y manifiestos. Perderá su acceso y necesitará una nueva activación.`}
-                confirmLabel="Eliminar pantalla"
+                confirmLabel="Eliminar aviso LED"
                 onConfirm={() => {
                     if (deletingDevice) router.delete(`/admin/devices/${deletingDevice.id}`, { preserveScroll: true });
                 }}

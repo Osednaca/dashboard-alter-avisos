@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Domain\Advertisers\Models\Advertiser;
-use App\Domain\Businesses\Enums\BusinessCategory;
-use App\Domain\Businesses\Models\Business;
 use App\Domain\Campaigns\Actions\InvalidateCampaignDevices;
 use App\Domain\Campaigns\Actions\PublishCampaign;
 use App\Domain\Campaigns\Actions\ResolveCampaignTargets;
@@ -14,7 +12,6 @@ use App\Domain\Campaigns\Models\Campaign;
 use App\Domain\Campaigns\Models\CampaignTarget;
 use App\Domain\Devices\Models\Device;
 use App\Domain\Locations\Models\City;
-use App\Domain\Locations\Models\Location;
 use App\Domain\Media\Models\MediaAsset;
 use App\Domain\Operations\Actions\RecordAudit;
 use App\Http\Controllers\Controller;
@@ -42,7 +39,6 @@ class CampaignController extends Controller
             'status' => ['nullable', 'string'],
             'advertiser_id' => ['nullable', 'integer'],
             'city' => ['nullable', 'string'],
-            'category' => ['nullable', 'string'],
         ]);
 
         $from = today()->subDays(89);
@@ -51,7 +47,6 @@ class CampaignController extends Controller
             ->search($request->string('search')->toString())
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
             ->when($request->filled('advertiser_id'), fn ($q) => $q->where('advertiser_id', $request->integer('advertiser_id')))
-            ->when($request->filled('category'), fn ($q) => $q->whereHas('targets', fn ($qq) => $qq->where('target_type', 'business_category')->where('target_value', $request->string('category'))))
             ->when($request->filled('city'), fn ($q) => $q->whereHas('targets', fn ($qq) => $qq->where('target_type', 'city')->where(fn ($q) => $q
                 ->where('target_value', $request->string('city'))
                 ->orWhereIn('target_id', City::query()->where('name', $request->string('city'))->select('id')))))
@@ -66,7 +61,7 @@ class CampaignController extends Controller
 
         return Inertia::render('Admin/Campaigns/Index', [
             'campaigns' => $campaigns,
-            'filters' => $request->only('search', 'status', 'advertiser_id', 'city', 'category'),
+            'filters' => $request->only('search', 'status', 'advertiser_id', 'city'),
             'options' => $this->filterOptions(),
         ]);
     }
@@ -147,12 +142,11 @@ class CampaignController extends Controller
             'completed' => (clone $statsQuery)->sum('completed_count'),
             'failures' => (clone $statsQuery)->sum('failures'),
             'devices' => (clone $statsQuery)->sum('unique_devices'),
-            'businesses' => (clone $statsQuery)->sum('unique_businesses'),
             'duration' => (clone $statsQuery)->sum('total_duration'),
         ];
 
         $targetDevices = $targets->devicesFor($campaign)
-            ->with(['business', 'location'])
+            ->with(['cities'])
             ->limit(24)
             ->get()
             ->map(fn (Device $device) => EntityPresenter::device($device));
@@ -166,7 +160,8 @@ class CampaignController extends Controller
                 'status' => EntityPresenter::enum($creative->status),
                 'media' => $creative->mediaAsset ? EntityPresenter::mediaAsset($creative->mediaAsset) : null,
             ]),
-            'targets' => $campaign->targets->map(fn ($target) => EntityPresenter::campaignTarget($target)),
+            'targets' => $campaign->targets->filter(fn ($target) => in_array($target->target_type->value, ['city', 'device'], true))->values()->map(fn ($target) => EntityPresenter::campaignTarget($target)),
+            'hasLegacyTargets' => $campaign->targets->contains(fn ($target) => ! in_array($target->target_type->value, ['city', 'device'], true)),
             'targetSummary' => $targets->summary($campaign),
             'targetDevices' => $targetDevices,
             'analytics' => ['series' => $series, 'totals' => $totals],
@@ -188,7 +183,8 @@ class CampaignController extends Controller
                     'duration' => $c->duration,
                     'weight' => $c->weight,
                 ]),
-                'targets' => $campaign->targets->map(fn (CampaignTarget $target) => [
+                'has_legacy_targets' => $campaign->targets->contains(fn ($target) => ! in_array($target->target_type->value, ['city', 'device'], true)),
+                'targets' => $campaign->targets->filter(fn ($target) => in_array($target->target_type->value, ['city', 'device'], true))->values()->map(fn (CampaignTarget $target) => [
                     'target_type' => $target->target_type->value,
                     'target_id' => $target->target_id,
                     'target_value' => $target->target_value,
@@ -344,7 +340,7 @@ class CampaignController extends Controller
      */
     protected function syncTargets(Campaign $campaign, array $targets): void
     {
-        $campaign->targets()->delete();
+        $campaign->targets()->whereIn('target_type', ['city', 'device'])->delete();
 
         foreach ($targets as $target) {
             $campaign->targets()->create([
@@ -365,7 +361,6 @@ class CampaignController extends Controller
             'statuses' => collect(CampaignStatus::cases())->map(fn ($s) => ['value' => $s->value, 'label' => $s->label()])->all(),
             'advertisers' => Advertiser::query()->orderBy('name')->get(['id', 'name']),
             'cities' => City::query()->orderBy('name')->distinct()->pluck('name'),
-            'categories' => BusinessCategory::options(),
         ];
     }
 
@@ -382,23 +377,9 @@ class CampaignController extends Controller
             ]),
             'creatives' => MediaAsset::query()->advertising()->ready()->latest()->get()->map(fn ($asset) => EntityPresenter::mediaAsset($asset)),
             'cities' => City::query()->where('status', 'active')->orderBy('name')->get(['id', 'name', 'state', 'country']),
-            'categories' => BusinessCategory::options(),
-            'businesses' => Business::query()->orderBy('name')->get(['id', 'name']),
-            'locations' => Location::query()->with('business:id,name')->orderBy('name')->get(['id', 'name', 'city', 'business_id'])->map(fn ($l) => [
-                'id' => $l->id,
-                'name' => $l->name,
-                'city' => $l->city,
-                'business' => $l->business?->name,
-            ]),
-            'devices' => Device::query()->with('business:id,name')->orderBy('name')->get(['id', 'name', 'business_id'])->map(fn ($d) => [
-                'id' => $d->id,
-                'name' => $d->name,
-                'business' => $d->business?->name,
-            ]),
+            'devices' => Device::query()->orderBy('name')->get(['id', 'name']),
             'counts' => [
                 'screens' => Device::query()->count(),
-                'businesses' => Business::query()->count(),
-                'locations' => Location::query()->count(),
                 'cities' => City::query()->where('status', 'active')->count(),
             ],
         ];

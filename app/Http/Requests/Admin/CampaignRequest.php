@@ -52,9 +52,9 @@ class CampaignRequest extends FormRequest
             'creatives.*.configuration.size_acknowledged' => ['boolean'],
             'creatives.*.configuration.fallback_media_id' => ['nullable', 'integer', Rule::exists('media_assets', 'id')->where(fn ($q) => $q->whereIn('id', MediaAsset::query()->advertising()->ready()->whereIn('type', ['image', 'video'])->select('id')))],
 
-            'targets' => ['required', 'array', 'min:1', 'max:200'],
+            'targets' => ['present', 'array', 'max:200', ...($this->route('campaign')?->targets()->whereNotIn('target_type', ['city', 'device'])->exists() ? [] : ['min:1'])],
             'targets.*' => ['required', 'array'],
-            'targets.*.target_type' => ['bail', 'required', 'string', Rule::enum(CampaignTargetType::class)],
+            'targets.*.target_type' => ['bail', 'required', 'string', Rule::in([CampaignTargetType::City->value, CampaignTargetType::Device->value])],
             'targets.*.target_id' => ['nullable', 'integer'],
             'targets.*.target_value' => ['nullable', 'string', 'max:160'],
             'targets.*.is_exclusion' => ['boolean'],

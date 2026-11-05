@@ -28,7 +28,7 @@ class UserController extends Controller
         ]);
 
         $users = User::query()
-            ->with(['roles', 'businesses'])
+            ->with('roles')
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($qq) => $qq
                 ->where('name', 'like', '%'.$request->string('search').'%')
                 ->orWhere('email', 'like', '%'.$request->string('search').'%')))

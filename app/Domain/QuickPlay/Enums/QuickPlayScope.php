@@ -5,6 +5,7 @@ namespace App\Domain\QuickPlay\Enums;
 enum QuickPlayScope: string
 {
     case Devices = 'devices';
+    case Cities = 'cities';
     case Businesses = 'businesses';
     case Locations = 'locations';
     case All = 'all';
@@ -12,10 +13,10 @@ enum QuickPlayScope: string
     public function label(): string
     {
         return match ($this) {
-            self::Devices => 'Pantallas específicas',
-            self::Businesses => 'Por negocio',
-            self::Locations => 'Por ubicación',
-            self::All => 'Todas las pantallas',
+            self::Devices => 'Avisos LED específicos',
+            self::Cities => 'Por ciudad',
+            self::Businesses, self::Locations => 'Destino anterior',
+            self::All => 'Todos los avisos LED',
         };
     }
 }

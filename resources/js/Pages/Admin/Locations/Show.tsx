@@ -20,7 +20,7 @@ export default function LocationShow({
     const columns: Array<Column<DeviceEntity>> = [
         {
             key: 'name',
-            header: 'Pantalla',
+            header: 'Aviso LED',
             cell: (row) => (
                 <Link href={`/admin/devices/${row.id}`} className="font-medium text-fg hover:text-accent">
                     {row.name}
@@ -58,7 +58,7 @@ export default function LocationShow({
                     <CardContent className="flex items-center gap-3 pt-4">
                         <MonitorPlay className="size-5 text-accent" />
                         <div>
-                            <p className="text-xs text-muted">Pantallas</p>
+                            <p className="text-xs text-muted">Avisos LED</p>
                             <p className="metric text-sm text-fg">
                                 {location.online_devices_count}/{location.devices_count} en línea
                             </p>
@@ -75,20 +75,11 @@ export default function LocationShow({
 
             <Card className="mt-4">
                 <CardContent className="pt-4">
-                    <p className="mb-2 text-sm font-medium text-fg">Negocios asignados ({location.businesses.length})</p>
-                    <div className="flex flex-wrap gap-3">
-                        {location.businesses.map((business) => <Link key={business.id} href={`/admin/businesses/${business.id}`} className="text-sm text-accent">{business.name}</Link>)}
-                        {location.businesses.length === 0 ? <p className="text-xs text-muted">Sin negocios asignados.</p> : null}
-                    </div>
-                </CardContent>
-            </Card>
-            <Card className="mt-4">
-                <CardContent className="pt-4">
                     <DataTable
                         columns={columns}
                         rows={devices}
                         keyExtractor={(row) => row.id}
-                        empty={<EmptyState icon={MonitorPlay} title="Sin pantallas en los negocios asignados" />}
+                        empty={<EmptyState icon={MonitorPlay} title="Sin avisos LED asignados" />}
                     />
                 </CardContent>
             </Card>

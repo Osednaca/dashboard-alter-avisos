@@ -8,7 +8,7 @@ import { cn } from '@/Utils/cn';
 import { PLAYBACK_FRESH_MS, playbackIsFresh, playbackPositionMs, playbackSceneLabels } from '@/Utils/playback-preview';
 
 export type ScreenPreviewData = DevicePreviewData;
-const zoneLabels = { business: 'Negocio', advertising: 'Publicidad', fullscreen: 'Pantalla completa' };
+const zoneLabels = { business: 'Contenido anterior', advertising: 'Publicidad', fullscreen: 'Pantalla completa' };
 const stateLabels = { playing: 'Reproduciendo', paused: 'Pausado', buffering: 'Cargando', error: 'Error en la TV', empty: 'Zona vacía' };
 const sourceLabels = { manifest: 'Lista', quick_play: 'Reproducción inmediata', live: 'Directo', live_fallback: 'Reserva de directo', empty: 'Sin contenido' };
 
@@ -85,7 +85,7 @@ export function ScreenPreview({ preview, className }: { preview: DevicePreviewDa
     const zones: Array<{ key: PlaybackZoneName; percent: number; media: PreviewMediaData | null; state?: PlaybackZone }> = fullscreen
         ? [{ key: 'fullscreen', percent: 100, media: fullscreen.media, state: fullscreen }]
         : [
-            { key: 'business' as const, percent: layout?.business_percentage ?? 70, media: report ? report.zones.business?.media ?? null : preview.business_media, state: report?.zones.business },
+            { key: 'business' as const, percent: layout?.business_percentage ?? 70, media: null, state: report?.zones.business },
             { key: 'advertising' as const, percent: layout?.advertising_percentage ?? 30, media: report ? report.zones.advertising?.media ?? null : preview.advertising?.media ?? null, state: report?.zones.advertising },
         ].filter(zone => zone.percent > 0);
     if (!fullscreen && layout && !layout.business_first) zones.reverse();
@@ -125,13 +125,12 @@ export function ScreenPreview({ preview, className }: { preview: DevicePreviewDa
         <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-fg">{device.name}</p>
-                <p className="truncate text-xs text-muted">{device.business?.name ?? '—'}{device.location ? ` · ${device.location.name}, ${device.location.city}` : ''}</p>
+                <p className="truncate text-xs text-muted">{device.cities?.map((city) => city.name).join(', ') || 'Sin ciudad'}</p>
             </div>
-            <Badge tone={device.is_online ? 'positive' : 'danger'} dot>{device.is_online ? 'En línea' : 'Desconectada'}</Badge>
+            <Badge tone={device.is_online ? 'positive' : 'danger'} dot>{device.is_online ? 'En línea' : 'Desconectado'}</Badge>
         </div>
         <dl className="grid grid-cols-2 gap-3 border-t border-line pt-3 text-xs">
             <div><dt className="text-faint">{report ? 'Diseño reportado' : 'Diseño confirmado'}</dt><dd className="text-fg">{layout?.name ?? '—'}</dd></div>
-            <div><dt className="text-faint">Lista del negocio</dt><dd className="text-fg">{preview.playlist?.name ?? '—'}</dd></div>
             <div><dt className="text-faint">{report ? 'Publicidad reportada' : 'Publicidad de muestra'}</dt><dd className="text-fg">{preview.advertising?.campaign_name ?? '—'}</dd></div>
             <div><dt className="text-faint">{report ? 'Manifiesto del diseño' : 'Manifiesto confirmado'}</dt><dd className="metric text-fg">{preview.manifest_version ?? '—'}</dd></div>
             <div><dt className="text-faint">Última sincronización</dt><dd className="text-fg">{formatRelative(preview.last_sync_at)}</dd></div>

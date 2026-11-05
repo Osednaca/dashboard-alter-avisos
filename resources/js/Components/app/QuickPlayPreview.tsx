@@ -57,7 +57,7 @@ export function QuickPlayPreview({
                 ) : mode === 'advertising' ? (
                     <>
                         <div className="relative flex w-[70%] items-center justify-center bg-[#0a0f16]">
-                            <span className="text-[10px] text-white/30">Contenido del negocio</span>
+                            <span className="text-[10px] text-white/30">Contenido anterior</span>
                         </div>
                         <div className="relative flex w-[30%] items-center justify-center border-l border-white/10 bg-black">
                             {mediaLayer}

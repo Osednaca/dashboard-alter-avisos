@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Domain\Operations\Actions\RecordAudit;
 use App\Domain\Operations\Models\SystemSetting;
 use App\Domain\Users\Enums\PermissionEnum;
+use App\Domain\Users\Enums\RoleEnum;
 use App\Domain\Users\Models\Permission;
 use App\Domain\Users\Models\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Presenters\EntityPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -28,13 +30,13 @@ class SettingsController extends Controller
             'label' => $setting->label,
         ]);
 
-        $roles = Role::query()->with('permissions')->withCount('users')->orderBy('label')->get()
+        $roles = Role::query()->where('name', '!=', RoleEnum::BusinessUser->value)->with('permissions')->withCount('users')->orderBy('label')->get()
             ->map(fn (Role $role) => EntityPresenter::role($role));
 
         return Inertia::render('Admin/Settings/Index', [
             'settings' => $settings,
             'roles' => $roles,
-            'permissionGroups' => PermissionEnum::grouped(),
+            'permissionGroups' => $this->visiblePermissionGroups(),
             'environment' => [
                 'app_env' => config('app.env'),
                 'app_version' => config('signage.version'),
@@ -80,15 +82,31 @@ class SettingsController extends Controller
 
         $data = $request->validate([
             'permissions' => ['array'],
-            'permissions.*' => ['string'],
+            'permissions.*' => ['string', Rule::in(collect($this->visiblePermissionGroups())->flatten(1)->pluck('value')->all())],
         ]);
 
         $ids = Permission::query()->whereIn('name', $data['permissions'] ?? [])->pluck('id');
+        $legacyIds = $role->permissions()->where(fn ($q) => $q->where('permissions.name', 'like', 'business.%')
+            ->orWhere('permissions.name', 'like', 'businesses.%'))->pluck('permissions.id');
 
-        $role->permissions()->sync($ids);
+        $role->permissions()->sync($ids->merge($legacyIds)->unique());
 
         app(RecordAudit::class)->handle('role.permissions.updated', $role, [], ['permissions' => $data['permissions'] ?? []]);
 
         return back()->with('success', 'Permisos del rol actualizados.');
+    }
+
+    /** @return array<string, array<int, array{value: string, label: string}>> */
+    private function visiblePermissionGroups(): array
+    {
+        $groups = [];
+        foreach (PermissionEnum::grouped() as $name => $permissions) {
+            $visible = array_values(array_filter($permissions, fn ($permission) => ! str_starts_with($permission['value'], 'business.') && ! str_starts_with($permission['value'], 'businesses.')));
+            if ($visible !== []) {
+                $groups[$name === 'Negocios' ? 'Ubicaciones' : $name] = $visible;
+            }
+        }
+
+        return $groups;
     }
 }

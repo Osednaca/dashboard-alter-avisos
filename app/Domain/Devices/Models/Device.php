@@ -4,6 +4,7 @@ namespace App\Domain\Devices\Models;
 
 use App\Domain\Businesses\Models\Business;
 use App\Domain\Devices\Enums\DeviceStatus;
+use App\Domain\Locations\Models\City;
 use App\Domain\Locations\Models\Location;
 use App\Domain\Media\Models\Layout;
 use App\Domain\Playback\Models\PlaybackEvent;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -61,6 +63,11 @@ class Device extends Model
     /**
      * @return BelongsTo<Layout, $this>
      */
+    public function cities(): BelongsToMany
+    {
+        return $this->belongsToMany(City::class, 'city_device')->withTimestamps();
+    }
+
     public function currentLayout(): BelongsTo
     {
         return $this->belongsTo(Layout::class, 'current_layout_id');

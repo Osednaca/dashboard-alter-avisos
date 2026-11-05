@@ -23,8 +23,8 @@ interface ActivationEntity {
     status: EnumValue;
     device_uuid: string | null;
     device_name: string | null;
-    business: { id: number; name: string } | null;
-    location: { id: number; name: string } | null;
+    assigned: boolean;
+    city: { id: number; name: string } | null;
     app_version: string | null;
     ip_address: string | null;
     expires_at: string | null;
@@ -32,20 +32,14 @@ interface ActivationEntity {
     created_at: string | null;
 }
 
-interface ActivationLocation {
-    id: number;
-    name: string;
-    city: string;
-}
-
-export default function Activations({ activations, locations }: { activations: ActivationEntity[]; locations: ActivationLocation[] }) {
+export default function Activations({ activations, cities }: { activations: ActivationEntity[]; cities: Array<{ id: number; name: string; state: string }> }) {
     const [selected, setSelected] = useState<ActivationEntity | null>(null);
 
-    const form = useForm({ location_id: '', device_name: '' });
+    const form = useForm({ city_id: '', device_name: '' });
 
     const openAssign = (activation: ActivationEntity) => {
         form.setData({
-            location_id: activation.location ? String(activation.location.id) : '',
+            city_id: activation.city ? String(activation.city.id) : '',
             device_name: activation.device_name ?? '',
         });
         form.clearErrors();
@@ -67,8 +61,8 @@ export default function Activations({ activations, locations }: { activations: A
             key: 'business',
             header: 'Asignación',
             cell: (row) =>
-                row.business ? (
-                    <span className="text-muted">{row.location?.name ?? 'Asignado'}</span>
+                row.assigned ? (
+                    <span className="text-muted">{row.city?.name ?? 'Asignado'}</span>
                 ) : (
                     <span className="text-faint">Sin asignar</span>
                 ),
@@ -121,7 +115,7 @@ export default function Activations({ activations, locations }: { activations: A
             <div className="mt-4 rounded-card border border-line bg-surface p-4 text-xs text-muted">
                 <p className="flex items-center gap-2">
                     <KeyRound className="size-3.5 text-accent" />
-                    Flujo: la app solicita un código → el administrador lo asigna a una ubicación opcional → el aviso LED
+                    Flujo: la app solicita un código → el administrador lo asigna a una ciudad opcional → el aviso LED
                     confirma y recibe su token.
                 </p>
             </div>
@@ -143,21 +137,11 @@ export default function Activations({ activations, locations }: { activations: A
                         <DialogTitle>Asignar código {selected?.code}</DialogTitle>
                     </DialogHeader>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <FormField label="Ubicación (opcional)" error={form.errors.location_id}>
-                            <Select
-                                value={form.data.location_id || undefined}
-                                onValueChange={(value) => form.setData('location_id', value)}
-                                disabled={!locations.length}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Selecciona ubicación" />
-                                </SelectTrigger>
+                        <FormField label="Ciudad (opcional)" error={form.errors.city_id}>
+                            <Select value={form.data.city_id || undefined} onValueChange={(value) => form.setData('city_id', value)} disabled={!cities.length}>
+                                <SelectTrigger><SelectValue placeholder="Selecciona ciudad" /></SelectTrigger>
                                 <SelectContent>
-                                    {locations.map((location) => (
-                                        <SelectItem key={location.id} value={String(location.id)}>
-                                            {location.name} · {location.city}
-                                        </SelectItem>
-                                    ))}
+                                    {cities.map((city) => <SelectItem key={city.id} value={String(city.id)}>{city.name}{city.state ? ` · ${city.state}` : ''}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </FormField>

@@ -10,11 +10,12 @@ class AssignActivation
     /**
      * Assign a pending activation code to a business and location.
      */
-    public function handle(DeviceActivation $activation, int $businessId, ?int $locationId, ?string $deviceName): DeviceActivation
+    public function handle(DeviceActivation $activation, int $businessId, ?int $locationId, ?string $deviceName, ?int $cityId = null): DeviceActivation
     {
         $activation->forceFill([
             'business_id' => $businessId,
             'location_id' => $locationId,
+            'city_id' => $cityId,
             'device_name' => $deviceName,
             'status' => ActivationStatus::Pending,
         ])->save();

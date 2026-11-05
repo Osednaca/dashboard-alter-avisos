@@ -254,8 +254,8 @@ class DevicePreviewTest extends TestCase
         $before = $device->fresh()->getAttributes();
         $user = $this->superAdmin();
         $this->actingAs($user)->get('/admin/dashboard?device='.$device->id)->assertOk()->assertInertia(fn ($page) => $page
-            ->where('screenPreview.status', 'reported')->where('screenPreview.playback.zones.business.position_ms', 4321)
-            ->where('screenPreview.business_media.url', '/actual-video.mp4'));
+            ->where('screenPreview.status', 'reported')->missing('screenPreview.playback.zones.business')
+            ->where('screenPreview.business_media', null));
         $this->travel(16)->seconds();
         $this->actingAs($user)->get('/admin/dashboard?device='.$device->id)->assertOk()->assertInertia(fn ($page) => $page
             ->where('screenPreview.status', 'stale')->where('screenPreview.business_media', null)->has('screenPreview.playback.zones', 0));

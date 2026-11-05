@@ -4,6 +4,7 @@ namespace App\Domain\Devices\Models;
 
 use App\Domain\Businesses\Models\Business;
 use App\Domain\Devices\Enums\ActivationStatus;
+use App\Domain\Locations\Models\City;
 use App\Domain\Locations\Models\Location;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'code', 'device_uuid', 'status', 'business_id', 'location_id', 'device_id',
+    'code', 'device_uuid', 'status', 'business_id', 'location_id', 'city_id', 'device_id',
     'device_name', 'app_version', 'ip_address', 'expires_at', 'claimed_at',
 ])]
 class DeviceActivation extends Model
@@ -44,6 +45,11 @@ class DeviceActivation extends Model
     /**
      * @return BelongsTo<Device, $this>
      */
+    public function city(): BelongsTo
+    {
+        return $this->belongsTo(City::class);
+    }
+
     public function device(): BelongsTo
     {
         return $this->belongsTo(Device::class);

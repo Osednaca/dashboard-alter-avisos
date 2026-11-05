@@ -7,6 +7,8 @@ use App\Domain\Devices\Enums\DeviceStatus;
 use App\Domain\Devices\Events\DeviceConnected;
 use App\Domain\Devices\Models\Device;
 use App\Domain\Devices\Models\DeviceActivation;
+use App\Domain\Locations\Actions\UpdateCityCampaigns;
+use App\Domain\Locations\Models\City;
 use App\Domain\Media\Models\Layout;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -64,6 +66,14 @@ class ConfirmDeviceActivation
                 'last_ip' => $ip,
                 'current_layout_id' => $layoutId,
             ])->save();
+
+            if ($activation->city_id && ($city = City::query()->find($activation->city_id))) {
+                app(UpdateCityCampaigns::class)->handle(
+                    fn () => $city->devices()->syncWithoutDetaching([$device->id]),
+                    [$city->name],
+                    $city->id,
+                );
+            }
 
             $token = $device->issueToken();
 

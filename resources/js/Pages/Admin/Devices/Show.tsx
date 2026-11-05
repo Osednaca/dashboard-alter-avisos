@@ -110,9 +110,9 @@ export default function DeviceShow({
             <Head title={device.name} />
 
             <PageHeader
-                eyebrow={device.business?.name ?? 'Pantalla'}
+                eyebrow="Aviso LED"
                 title={device.name}
-                description={`${device.location?.name ?? 'Sin ubicación'} · ${device.current_layout?.name ?? 'Sin layout'} ${device.current_layout ? `(${device.current_layout.ratio})` : ''}`}
+                description={`${device.cities?.map((city) => city.name).join(', ') || 'Sin ciudad'} · ${device.current_layout?.name ?? 'Sin layout'} ${device.current_layout ? `(${device.current_layout.ratio})` : ''}`}
                 actions={
                     <>
                         <StatusBadge value={device.status} />
@@ -207,22 +207,20 @@ export default function DeviceShow({
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm">
                             <Row label="UUID" value={device.uuid} mono />
-                            <Row label="Negocio" value={device.business?.name ?? '—'} />
-                            <Row label="Ubicación" value={device.location?.name ?? '—'} />
-                            <Row label="Ciudad" value={device.location?.city ?? '—'} />
+                            <Row label="Ciudades" value={device.cities?.map((city) => city.name).join(', ') || 'Sin ciudad'} />
                         </CardContent>
                     </Card>
                     <Card className="xl:col-span-2">
                         <CardHeader><CardTitle>PIN global de acceso a Configuración</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             <p className="text-sm text-muted">
-                                Todas las pantallas de todos los negocios usan el mismo PIN. Los PIN anteriores por pantalla ya no son válidos.{' '}
+                                Todos los avisos LED usan el mismo PIN. Los PIN anteriores por aviso LED ya no son válidos.{' '}
                                 {adminPinConfigured ? 'El PIN global está configurado.' : 'El administrador debe configurar el PIN global para habilitar el acceso.'}
                                 {' '}El TV necesita conexión con el servidor para validarlo.
                             </p>
                             {canManagePin ? (
                                 <Button asChild variant="outline"><Link href="/admin/devices/global-pin"><KeyRound className="size-4" />Administrar PIN global</Link></Button>
-                            ) : <p className="text-xs text-faint">Solicita el PIN al administrador de las pantallas.</p>}
+                            ) : <p className="text-xs text-faint">Solicita el PIN al administrador de los avisos LED.</p>}
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -337,7 +335,7 @@ export default function DeviceShow({
                 open={!!pendingCommand}
                 onOpenChange={(open) => (!open ? setPendingCommand(null) : null)}
                 title={`Enviar ${pendingCommand?.label ?? ''}`}
-                description="Esta acción puede interrumpir momentáneamente la reproducción en la pantalla."
+                description="Esta acción puede interrumpir momentáneamente la reproducción en el aviso LED."
                 confirmLabel="Enviar comando"
                 variant="primary"
                 onConfirm={() => pendingCommand && executeCommand(pendingCommand)}
@@ -347,7 +345,7 @@ export default function DeviceShow({
                 open={confirmingRevoke}
                 onOpenChange={setConfirmingRevoke}
                 title="Revocar acceso"
-                description="La pantalla perderá su token y deberá activarse de nuevo con un código."
+                description="El aviso LED perderá su token y deberá activarse de nuevo con un código."
                 confirmLabel="Revocar acceso"
                 onConfirm={() =>
                     router.post(`/admin/devices/${device.id}/revoke-token`, {}, {
@@ -359,9 +357,9 @@ export default function DeviceShow({
             <ConfirmDialog
                 open={confirmingDelete}
                 onOpenChange={setConfirmingDelete}
-                title="Eliminar pantalla"
+                title="Eliminar aviso LED"
                 description={`¿Eliminar «${device.name}»? Se borrarán sus reportes, comandos y manifiestos. Perderá su acceso y necesitará una nueva activación.`}
-                confirmLabel="Eliminar pantalla"
+                confirmLabel="Eliminar aviso LED"
                 onConfirm={() => router.delete(`/admin/devices/${device.id}`)}
             />
         </AdminLayout>

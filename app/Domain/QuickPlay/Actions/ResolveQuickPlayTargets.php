@@ -26,6 +26,8 @@ class ResolveQuickPlayTargets
                 DeviceStatus::PendingActivation->value,
             ])
             ->when($scope === QuickPlayScope::Devices, fn ($q) => $q->whereIn('id', $targets['device_ids'] ?? []))
+            ->when($scope === QuickPlayScope::Cities, fn ($q) => $q->whereHas('cities', fn ($city) => $city
+                ->where('cities.status', 'active')->whereIn('cities.id', $targets['city_ids'] ?? [])))
             ->when($scope === QuickPlayScope::Businesses, fn ($q) => $q->whereIn('business_id', $targets['business_ids'] ?? []))
             ->when($scope === QuickPlayScope::Locations, fn ($q) => $q->whereIn('location_id', $targets['location_ids'] ?? []))
             ->with(['business:id,name', 'location:id,name,city'])

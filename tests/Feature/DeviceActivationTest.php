@@ -37,16 +37,16 @@ class DeviceActivationTest extends TestCase
         ]);
     }
 
-    public function test_activation_with_a_location_uses_its_existing_association(): void
+    public function test_reassigning_an_existing_activation_preserves_its_legacy_location(): void
     {
-        $admin = $this->superAdmin();
         $location = Location::factory()->create();
         $activation = DeviceActivation::query()->create([
             'code' => 'LED456', 'status' => 'pending', 'expires_at' => now()->addHour(),
+            'business_id' => $location->business_id, 'location_id' => $location->id,
         ]);
 
-        $this->actingAs($admin)->post("/admin/activations/{$activation->id}/assign", [
-            'location_id' => $location->id,
+        $this->actingAs($this->superAdmin())->post("/admin/activations/{$activation->id}/assign", [
+            'device_name' => 'Aviso',
         ])->assertSessionHasNoErrors();
         $this->assertSame($location->business_id, $activation->fresh()->business_id);
         $this->assertSame($location->id, $activation->fresh()->location_id);

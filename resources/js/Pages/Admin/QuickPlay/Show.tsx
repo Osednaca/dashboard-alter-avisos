@@ -20,7 +20,6 @@ import { StatusBadge } from '@/Components/app/StatusBadge';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { AdminLayout } from '@/Layouts/AdminLayout';
-import { BusinessLayout } from '@/Layouts/BusinessLayout';
 import type { QuickPlayDeviceEntity, QuickPlayEntity } from '@/Types';
 import { getEcho } from '@/Utils/echo';
 import { formatDateTime, formatNumber, formatRelative } from '@/Utils/format';
@@ -30,19 +29,15 @@ const terminalStatuses = ['completed', 'partial', 'failed'];
 export default function QuickPlayShow({
     quickPlay,
     devices,
-    portal = 'admin',
 }: {
-    portal?: 'admin' | 'business';
     quickPlay: QuickPlayEntity;
     devices: QuickPlayDeviceEntity[];
 }) {
-    const PageLayout = portal === 'business' ? BusinessLayout : AdminLayout;
-    const basePath = `/${portal}/quick-play`;
+    const basePath = '/admin/quick-play';
     const isTerminal = terminalStatuses.includes(quickPlay.status.value);
 
     // Real-time updates over Reverb when available.
     useEffect(() => {
-        if (portal === 'business') return;
         const echo = getEcho();
         if (!echo) return;
 
@@ -55,7 +50,7 @@ export default function QuickPlayShow({
         return () => {
             echo.leave(channelName);
         };
-    }, [quickPlay.id, portal]);
+    }, [quickPlay.id]);
 
     // Polling fallback keeps the board accurate even without websockets.
     useEffect(() => {
@@ -67,12 +62,12 @@ export default function QuickPlayShow({
     const columns: Array<Column<QuickPlayDeviceEntity>> = [
         {
             key: 'device',
-            header: 'Pantalla',
+            header: 'Aviso LED',
             cell: (row) => (
                 <div className="min-w-0">
-                    <span className="block truncate font-medium text-fg">{row.device?.name ?? 'Pantalla eliminada'}</span>
+                    <span className="block truncate font-medium text-fg">{row.device?.name ?? 'Aviso LED eliminado'}</span>
                     <span className="block truncate text-xs text-faint">
-                        {[row.device?.business, row.device?.city].filter(Boolean).join(' · ') || '—'}
+                        {row.device?.city ?? '—'}
                     </span>
                 </div>
             ),
@@ -85,7 +80,7 @@ export default function QuickPlayShow({
                 row.error ? (
                     <span className="text-xs text-danger">{row.error}</span>
                 ) : row.status.value === 'playing' ? (
-                    <span className="text-xs text-accent">En pantalla ahora</span>
+                    <span className="text-xs text-accent">Reproduciendo ahora</span>
                 ) : (
                     <span className="text-xs text-faint">—</span>
                 ),
@@ -98,7 +93,7 @@ export default function QuickPlayShow({
     const inFlight = devices.filter((device) => !['completed', 'failed'].includes(device.status.value)).length;
 
     return (
-        <PageLayout>
+        <AdminLayout>
             <Head title={`Reproducción inmediata #${quickPlay.id}`} />
 
             <PageHeader
@@ -108,7 +103,7 @@ export default function QuickPlayShow({
                 actions={
                     <>
                         <StatusBadge value={quickPlay.status} />
-                        <QuickPlayActions quickPlay={quickPlay} portal={portal} />
+                        <QuickPlayActions quickPlay={quickPlay} portal="admin" />
                         {!isTerminal ? (
                             <Button
                                 variant="secondary"
@@ -130,14 +125,14 @@ export default function QuickPlayShow({
             />
 
             {quickPlay.retry_of_id ? (
-                <p className="mt-4 text-sm text-muted">Reintento del envío #{quickPlay.retry_of_id}. Incluye solo las pantallas que fallaron.</p>
+                <p className="mt-4 text-sm text-muted">Reintento del envío #{quickPlay.retry_of_id}. Incluye solo los avisos LED que fallaron.</p>
             ) : null}
 
             <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <Card>
                     <CardContent className="pt-4">
                         <p className="flex items-center gap-1.5 text-xs text-muted">
-                            <MonitorPlay className="size-3.5 text-faint" /> Pantallas
+                            <MonitorPlay className="size-3.5 text-faint" /> Avisos LED
                         </p>
                         <p className="metric mt-1 text-2xl text-fg">{formatNumber(quickPlay.targets_count)}</p>
                     </CardContent>
@@ -174,7 +169,7 @@ export default function QuickPlayShow({
                         <CardTitle>Vista previa</CardTitle>
                         {!isTerminal ? (
                             <span className="inline-flex items-center gap-1.5 text-xs text-accent">
-                                <span className="size-1.5 animate-pulse rounded-full bg-accent" /> {inFlight} pantallas en proceso
+                                <span className="size-1.5 animate-pulse rounded-full bg-accent" /> {inFlight} avisos LED en proceso
                             </span>
                         ) : null}
                     </CardHeader>
@@ -205,7 +200,7 @@ export default function QuickPlayShow({
 
             <Card className="mt-4">
                 <CardHeader>
-                    <CardTitle>Entrega por pantalla</CardTitle>
+                    <CardTitle>Entrega por aviso LED</CardTitle>
                     <span className="inline-flex items-center gap-1.5 text-xs text-faint">
                         <Clock className="size-3" /> Se actualiza en tiempo real
                     </span>
@@ -215,7 +210,7 @@ export default function QuickPlayShow({
                         columns={columns}
                         rows={devices}
                         keyExtractor={(row) => row.id}
-                        empty={<EmptyState icon={MonitorPlay} title="Sin pantallas objetivo" />}
+                        empty={<EmptyState icon={MonitorPlay} title="Sin avisos LED objetivo" />}
                     />
                 </CardContent>
             </Card>
@@ -223,13 +218,13 @@ export default function QuickPlayShow({
             {quickPlay.failed_count > 0 ? (
                 <div className="mt-4 flex items-start gap-2 rounded-card border border-danger/25 bg-danger/10 px-4 py-3 text-xs text-danger">
                     <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-                    {quickPlay.failed_count} pantalla(s) no pudieron completar la reproducción. Revisa el detalle de cada pantalla;
-                    {quickPlay.can_retry ? ' después de corregir la causa, pulsa «Reintentar fallidas». Solo se reenviará a esas pantallas.'
+                    {quickPlay.failed_count} aviso(s) LED no pudieron completar la reproducción. Revisa el detalle de cada aviso LED;
+                    {quickPlay.can_retry ? ' después de corregir la causa, pulsa «Reintentar fallidos». Solo se reenviará a esos avisos LED.'
                         : quickPlay.retry_id ? ' ya se creó un reintento; puedes consultar su entrega con «Ver reintento».'
                         : ' podrás reintentar cuando finalicen las entregas en curso.'}
                 </div>
             ) : null}
-        </PageLayout>
+        </AdminLayout>
     );
 }
 

@@ -38,15 +38,14 @@ export default function Login({ status }: { status?: string }) {
                         <BrandLogo decorative className="size-12" />
                         <div>
                             <p className="text-sm font-semibold text-fg">{app.name}</p>
-                            <p className="text-[11px] uppercase tracking-wider text-faint">Red de pantallas</p>
+                            <p className="text-[11px] uppercase tracking-wider text-faint">Red de avisos LED</p>
                         </div>
                     </div>
 
                     <div className="space-y-4">
                         <p className="metric text-5xl font-semibold leading-none text-fg"></p>
                         <p className="max-w-xs text-sm text-muted">
-                            Pantallas activas reportando en tiempo real en restaurantes, gimnasios,
-                            clínicas y comercios.
+                            Avisos LED activos que muestran publicidad y reportan su estado en tiempo real.
                         </p>
                         <div className="flex flex-wrap gap-2 text-[11px] text-faint">
                             <span className="rounded-full border border-line px-3 py-1">Bogotá</span>
@@ -57,9 +56,7 @@ export default function Login({ status }: { status?: string }) {
                     </div>
 
                     <p className="text-[11px] uppercase leading-relaxed tracking-[0.18em] text-faint">
-                        Negocios
-                        <br />
-                        Pantallas
+                        Avisos LED
                         <br />
                         Audiencias
                     </p>

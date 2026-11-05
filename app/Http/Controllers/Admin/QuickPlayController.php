@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Domain\Businesses\Models\Business;
 use App\Domain\Devices\Enums\DeviceStatus;
 use App\Domain\Devices\Models\Device;
+use App\Domain\Locations\Models\City;
 use App\Domain\Locations\Models\Location;
 use App\Domain\Media\Models\MediaAsset;
 use App\Domain\Operations\Actions\RecordAudit;
@@ -99,8 +100,7 @@ class QuickPlayController extends Controller
             $request->filled('duration') ? $request->integer('duration') : null,
             [
                 'device_ids' => $request->input('device_ids', []),
-                'business_ids' => $request->input('business_ids', []),
-                'location_ids' => $request->input('location_ids', []),
+                'city_ids' => $request->input('city_ids', []),
             ],
         );
 
@@ -122,8 +122,7 @@ class QuickPlayController extends Controller
         $quickPlay->load([
             'mediaAsset',
             'user',
-            'devices.device.business:id,name',
-            'devices.device.location:id,name,city',
+            'devices.device.cities:id,name',
         ]);
 
         return Inertia::render('Admin/QuickPlay/Show', [
@@ -172,41 +171,25 @@ class QuickPlayController extends Controller
                 ->all(),
             'devices' => $this->devicesQuery()
                 ->whereNotIn('status', [DeviceStatus::Disabled->value, DeviceStatus::PendingActivation->value])
-                ->with(['business:id,name', 'location:id,name,city'])
+                ->with('cities:id,name')
                 ->orderBy('name')
                 ->get(['id', 'name', 'business_id', 'location_id', 'status', 'last_seen_at'])
                 ->map(fn (Device $device) => [
                     'id' => $device->id,
                     'name' => $device->name,
-                    'business' => $device->business?->name,
-                    'city' => $device->location?->city,
+                    'city' => $device->cities->pluck('name')->join(', '),
                     'status' => EntityPresenter::enum($device->status),
                     'is_online' => $device->isOnline(),
                 ])
                 ->all(),
-            'businesses' => $this->businessesQuery()
-                ->withCount('devices')
-                ->orderBy('name')
-                ->get(['id', 'name'])
-                ->map(fn (Business $business) => [
-                    'id' => $business->id,
-                    'name' => $business->name,
-                    'devices_count' => $business->devices_count,
-                ])
-                ->all(),
-            'locations' => $this->locationsQuery()
-                ->with('business:id,name')
-                ->withCount('devices')
-                ->orderBy('name')
-                ->get(['id', 'name', 'city', 'business_id'])
-                ->map(fn (Location $location) => [
-                    'id' => $location->id,
-                    'name' => $location->name,
-                    'city' => $location->city,
-                    'business' => $location->business?->name,
-                    'devices_count' => $location->devices_count,
-                ])
-                ->all(),
+            'cities' => City::query()->where('status', 'active')->orderBy('name')
+                ->with(['devices' => fn ($q) => $q->whereNotIn('devices.status', [DeviceStatus::Disabled->value, DeviceStatus::PendingActivation->value])])
+                ->get()->map(fn (City $city) => [
+                    'id' => $city->id,
+                    'name' => $city->name,
+                    'device_ids' => $city->devices->pluck('id')->all(),
+                    'devices_count' => $city->devices->count(),
+                ])->all(),
             'displayModes' => collect([QuickPlayDisplayMode::Fullscreen])
                 ->map(fn (QuickPlayDisplayMode $mode) => [
                     'value' => $mode->value,
@@ -214,15 +197,13 @@ class QuickPlayController extends Controller
                     'description' => $mode->description(),
                 ])
                 ->all(),
-            'scopes' => collect(QuickPlayScope::cases())
+            'scopes' => collect([QuickPlayScope::Devices, QuickPlayScope::Cities, QuickPlayScope::All])
                 ->map(fn (QuickPlayScope $scope) => ['value' => $scope->value, 'label' => $scope->label()])
                 ->all(),
             'counts' => [
                 'devices' => $this->devicesQuery()
                     ->whereNotIn('status', [DeviceStatus::Disabled->value, DeviceStatus::PendingActivation->value])
                     ->count(),
-                'businesses' => $this->businessesQuery()->count(),
-                'locations' => $this->locationsQuery()->count(),
             ],
         ];
     }
