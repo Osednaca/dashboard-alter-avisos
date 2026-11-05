@@ -53,7 +53,7 @@ function PreviewMedia({ media, zone, ageMs = 0 }: { media: PreviewMediaData | nu
     return media.type === 'video' ? (
         <video ref={video} src={media.url} className="size-full object-cover" muted autoPlay={!zone} loop={!zone} playsInline onError={() => setFailed(true)} />
     ) : (
-        <img src={media.url} alt="Contenido de la pantalla" className="size-full object-cover" onError={() => setFailed(true)} />
+        <img src={media.url} alt="Contenido del aviso LED" className="size-full object-cover" onError={() => setFailed(true)} />
     );
 }
 
@@ -71,7 +71,7 @@ export function ScreenPreview({ preview, className }: { preview: DevicePreviewDa
     }, [report, preview?.checked_at]);
     if (!preview) {
         return <div className="flex aspect-video items-center justify-center rounded-control border border-dashed border-line bg-inset text-xs text-muted">
-            Sin pantallas para previsualizar.
+            Sin avisos LED para previsualizar.
         </div>;
     }
     const { device, layout } = preview;
@@ -85,9 +85,9 @@ export function ScreenPreview({ preview, className }: { preview: DevicePreviewDa
     const zones: Array<{ key: PlaybackZoneName; percent: number; media: PreviewMediaData | null; state?: PlaybackZone }> = fullscreen
         ? [{ key: 'fullscreen', percent: 100, media: fullscreen.media, state: fullscreen }]
         : [
-            { key: 'business', percent: layout?.business_percentage ?? 70, media: report ? report.zones.business?.media ?? null : preview.business_media, state: report?.zones.business },
-            { key: 'advertising', percent: layout?.advertising_percentage ?? 30, media: report ? report.zones.advertising?.media ?? null : preview.advertising?.media ?? null, state: report?.zones.advertising },
-        ];
+            { key: 'business' as const, percent: layout?.business_percentage ?? 70, media: report ? report.zones.business?.media ?? null : preview.business_media, state: report?.zones.business },
+            { key: 'advertising' as const, percent: layout?.advertising_percentage ?? 30, media: report ? report.zones.advertising?.media ?? null : preview.advertising?.media ?? null, state: report?.zones.advertising },
+        ].filter(zone => zone.percent > 0);
     if (!fullscreen && layout && !layout.business_first) zones.reverse();
     const statusText = stale ? 'Reporte vencido o no verificable. No se puede confirmar qué muestra la TV ahora.'
         : sceneMasked && report ? playbackSceneLabels[report.scene]

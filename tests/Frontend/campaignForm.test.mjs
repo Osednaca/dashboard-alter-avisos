@@ -59,3 +59,12 @@ test('library preselection initializes ordered creatives only for a new campaign
     assert.deepEqual(form.targets, []);
     assert.deepEqual(initialCampaignValues({ creatives: [{ media_asset_id: 4, duration: 15, weight: 20 }] }, selected).creatives, [{ media_asset_id: 4, duration: 15, weight: 20 }]);
 });
+
+test('new and existing live creatives use fullscreen while preserving their other settings', () => {
+    const selected = initialCampaignValues(null, [{ id: 7, duration: 60, type: { value: 'live_stream' } }]);
+    assert.equal(selected.creatives[0].configuration.display_mode, 'fullscreen');
+    const config = { display_mode: 'business_zone', audio: true, starts_at: '2026-01-01', ends_at: '2026-01-02', fallback_media_id: 3, size_acknowledged: true };
+    const edited = initialCampaignValues({ creatives: [{ media_asset_id: 7, duration: 60, weight: 10, configuration: config }] });
+    assert.deepEqual(edited.creatives[0].configuration, { ...config, display_mode: 'fullscreen' });
+    assert.equal(config.display_mode, 'business_zone');
+});

@@ -1,0 +1,23 @@
+# Avisos LED y publicidad a pantalla completa
+
+Objetivo: adaptar esta copia de signage a avisos LED para publicidad, eliminando el acceso y las referencias a restaurantes y orientando campañas y reproducción a pantalla completa.
+
+Alcance autorizado: interfaz y flujos locales, rutas y lógica del servidor, contrato de reproducción compatible cuando sea posible y pruebas. No se autorizan operaciones remotas ni cambios en un repositorio Android externo. Conservar datos existentes y claves técnicas necesarias para compatibilidad.
+
+Restricciones y evidencia: el reproductor Android no está en esta copia; el contrato actual contempla dos zonas y la activación depende de `devices.business_id`. No se puede garantizar el comportamiento físico sin verificar o modificar el reproductor. TDD: sin configuración on/off en proyecto o sesión; aplicar pruebas de regresión ordinarias, sin atribuir un modo. Runner backend: `C:/xampp/php/php.exe vendor/bin/phpunit` con SQLite en memoria y entorno aislado; frontend: `node --test tests/Frontend/*.test.mjs`, `npm run typecheck`, `npm run build`. Dependencias inicialmente ausentes. RDD desactivado globalmente: disabled/unmanaged. Engram no disponible en herramientas: espejo pendiente.
+
+Entrega: estrategia ask-on-risk; previsión 800–1500 líneas de cambios propios, sin generados. El usuario eligió stacked-to-main; límites de slices y commits se registrarán según el trabajo real. No se autorizó publicar PR ni push.
+
+## Tareas
+
+- [ ] LED-1: Retirar acceso al portal de restaurantes y adaptar los flujos de gestión/activación sin perder datos ni impedir el alta. Ruta delegada: exploración de más de cuatro archivos y edición de múltiples archivos no triviales. Comprobar rutas, autenticación y activación.
+- [x] LED-2: Hacer que campañas, reproducción rápida y manifiestos soliciten publicidad a pantalla completa, preservando el contrato compatible. Ruta delegada: múltiples archivos no triviales. Comprobar validación, manifiestos y reproducción; documentar límites del reproductor externo.
+- [ ] LED-3: Adaptar nomenclatura visible del dashboard a avisos LED y eliminar referencias a restaurantes. Ruta delegada: múltiples archivos no triviales. Comprobar interfaz, búsquedas y compilación.
+- [ ] LED-4: Ejecutar verificaciones aplicables, revisar el resultado y registrar evidencia y limitaciones. Ruta delegada si requiere cambios en múltiples archivos; inline para comprobaciones.
+
+Criterios de aceptación: no existe acceso funcional al dashboard de restaurantes; las operaciones de avisos siguen siendo utilizables; las opciones visibles no ofrecen zonas parciales; el servidor solicita la publicidad a pantalla completa; textos relevantes dicen aviso LED; verificaciones y límites del reproductor quedan explícitos.
+
+Progreso: exploración inicial completada. Siguiente paso: implementar por unidades con pruebas y commits convencionales. Conteo de líneas y límites de slices pendientes.
+
+LED-2 verificado: PHPUnit focal 64 pruebas/490 aserciones (entorno SQLite aislado, APP_URL HTTPS); frontend 41 pruebas; typecheck y build correctos. Primer intento falló por APP_KEY/build ausentes y otro por APP_URL HTTP; corregidos solo en entorno de prueba. RDD disabled/unmanaged. Compatibilidad física Android no verificada. Commit: se registrará en la siguiente actualización. Rollback: archivos del manifiesto, reproducción, formularios y sus pruebas de este commit.
+

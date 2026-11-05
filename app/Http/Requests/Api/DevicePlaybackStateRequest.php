@@ -26,7 +26,7 @@ class DevicePlaybackStateRequest extends FormRequest
             'layout.manifest_version' => ['nullable', 'string', 'regex:/\A[0-9]{1,18}\z/'],
             'layout.rotation' => ['required_with:layout', 'integer', 'in:0,90,180,270'],
             'layout.split' => ['required_with:layout', 'in:side_by_side,top_bottom'],
-            'layout.business_percentage' => ['required_with:layout', 'integer', 'between:1,99'],
+            'layout.business_percentage' => ['required_with:layout', 'integer', 'between:0,99'],
             'layout.business_first' => ['required_with:layout', 'boolean'],
             'layout.width_px' => ['required_with:layout', 'integer', 'between:1,16384'],
             'layout.height_px' => ['required_with:layout', 'integer', 'between:1,16384'],

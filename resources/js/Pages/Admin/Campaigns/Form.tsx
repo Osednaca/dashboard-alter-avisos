@@ -54,7 +54,7 @@ const targetTypes: Option[] = [
     { value: 'business_category', label: 'Categoría' },
     { value: 'business', label: 'Negocio' },
     { value: 'location', label: 'Sucursal' },
-    { value: 'device', label: 'Pantalla' },
+    { value: 'device', label: 'Aviso LED' },
     { value: 'state', label: 'Departamento' },
     { value: 'country', label: 'País' },
 ];
@@ -85,7 +85,7 @@ export default function CampaignForm({ campaign, options, selectedMedia = [] }: 
     const addCreative = (media: MediaEntity) => {
         if (data.creatives.some((creative) => creative.media_asset_id === media.id)) return;
         setData('creatives', [...data.creatives, { media_asset_id: media.id, duration: media.duration ?? 10, weight: 10,
-            ...(media.type.value === 'live_stream' ? {configuration: {display_mode: 'advertising_zone', audio: false, starts_at: '', ends_at: '', fallback_media_id: null, size_acknowledged: false}} : {}) }]);
+            ...(media.type.value === 'live_stream' ? {configuration: {display_mode: 'fullscreen', audio: false, starts_at: '', ends_at: '', fallback_media_id: null, size_acknowledged: false}} : {}) }]);
     };
 
     const removeCreative = (id: number | '') => {
@@ -408,7 +408,7 @@ export default function CampaignForm({ campaign, options, selectedMedia = [] }: 
                         <div className="space-y-5">
                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                                 {[
-                                    { label: 'Pantallas', value: summary?.screens ?? 0, icon: Target },
+                                    { label: 'Avisos LED', value: summary?.screens ?? 0, icon: Target },
                                     { label: 'Negocios', value: summary?.businesses ?? 0, icon: Target },
                                     { label: 'Ubicaciones', value: summary?.locations ?? 0, icon: Target },
                                     { label: 'Ciudades', value: summary?.cities ?? 0, icon: CalendarDays },
@@ -600,7 +600,7 @@ function TargetBuilder({
 
             <p className="flex items-center gap-2 text-[11px] text-faint">
                 <ImageIcon className="size-3.5" />
-                La red cuenta con {formatNumber(options.counts.screens)} pantallas, {options.counts.businesses} negocios y{' '}
+                La red cuenta con {formatNumber(options.counts.screens)} avisos LED, {options.counts.businesses} negocios y{' '}
                 {options.counts.cities} ciudades disponibles.
             </p>
         </div>

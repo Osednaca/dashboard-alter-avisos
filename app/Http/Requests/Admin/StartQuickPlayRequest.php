@@ -24,7 +24,7 @@ class StartQuickPlayRequest extends FormRequest
     {
         return [
             'media_asset_id' => ['required', 'integer', Rule::exists('media_assets', 'id')->where(fn ($q) => $q->whereIn('id', MediaAsset::query()->advertising()->ready()->select('id')))],
-            'display_mode' => ['required', Rule::enum(QuickPlayDisplayMode::class)],
+            'display_mode' => ['required', Rule::in([QuickPlayDisplayMode::Fullscreen->value])],
             'scope' => ['required', Rule::enum(QuickPlayScope::class)],
             'duration' => ['nullable', 'integer', 'between:3,3600'],
 

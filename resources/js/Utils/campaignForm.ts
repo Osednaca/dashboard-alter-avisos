@@ -40,8 +40,12 @@ export function initialCampaignValues(campaign: FormCampaign | null, selectedMed
         impressions_goal: campaign?.impressions_goal ?? null,
         budget: campaign?.budget ?? '',
         publish: false,
-        creatives: campaign ? (campaign.creatives ?? []).map((creative) => ({ ...creative })) as CreativeInput[]
-            : selectedMedia.map((media) => ({ media_asset_id: media.id, duration: Math.min(86400, Math.max(3, Math.round(media.duration ?? 10))), weight: 10 })) as CreativeInput[],
+        creatives: campaign ? (campaign.creatives ?? []).map((creative) => ({ ...creative,
+            ...(creative.configuration ? { configuration: { ...creative.configuration, display_mode: 'fullscreen' } } : {}),
+        })) as CreativeInput[]
+            : selectedMedia.map((media) => ({ media_asset_id: media.id, duration: Math.min(86400, Math.max(3, Math.round(media.duration ?? 10))), weight: 10,
+                ...(media.type?.value === 'live_stream' ? { configuration: { display_mode: 'fullscreen', audio: false, starts_at: '', ends_at: '', fallback_media_id: null, size_acknowledged: false } } : {}),
+            })) as CreativeInput[],
         targets: (campaign?.targets ?? []).map((target) => ({
             target_type: target.target_type,
             target_id: target.target_id ?? '',

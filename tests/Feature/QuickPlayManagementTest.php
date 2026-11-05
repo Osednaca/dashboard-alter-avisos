@@ -53,6 +53,8 @@ class QuickPlayManagementTest extends TestCase
             app(UpdateQuickPlayDeviceStatus::class)->handle($row,
                 $row->device_id === $failed->id ? QuickPlayDeviceStatus::Failed : QuickPlayDeviceStatus::Completed);
         }
+        // Simulate an old partial-zone delivery; retries must upgrade it.
+        $quick->update(['display_mode' => QuickPlayDisplayMode::Advertising]);
         $oldCommand = $quick->devices()->where('device_id', $failed->id)->sole()->command_id;
         $this->travel(31)->minutes();
         $failed->forceFill(['last_seen_at' => now()])->save();
@@ -61,7 +63,8 @@ class QuickPlayManagementTest extends TestCase
         $this->assertNotSame($quick->id, $retry->id);
         $this->assertSame($quick->id, $retry->metadata['retry_of_id']);
         $this->assertSame(17, $retry->duration);
-        $this->assertSame(QuickPlayDisplayMode::Advertising, $retry->display_mode);
+        $this->assertSame(QuickPlayDisplayMode::Fullscreen, $retry->display_mode);
+        $this->assertSame('fullscreen', $retry->devices()->sole()->command->payload['display_mode']);
         $this->assertSame($media->id, $retry->media_asset_id);
         $this->assertTrue($retry->expires_at->isFuture());
         $row = $retry->devices()->sole();

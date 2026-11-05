@@ -19,10 +19,12 @@ class ValidateLiveCampaign
                 continue;
             }
             app(LiveSourceParser::class)->parse($creative->mediaAsset->metadata['live']['original_url']);
-            $config = $creative->configuration ?? [];
+            // Historical campaigns may contain a former zone; delivery always
+            // uses fullscreen without mutating the original record.
+            $config = array_replace($creative->configuration ?? [], ['display_mode' => 'fullscreen']);
             $validator = Validator::make($config, [
                 'starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at'],
-                'display_mode' => ['required', 'in:advertising_zone,business_zone,fullscreen'],
+                'display_mode' => ['required', 'in:fullscreen'],
                 'audio' => ['required', 'boolean'], 'size_acknowledged' => ['accepted'],
             ]);
             if ($validator->fails()) {

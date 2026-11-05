@@ -1,5 +1,13 @@
 # Verify Alter TV playback locally
 
+> Historical integration notes: this copy of the dashboard now sends advertising
+> at 0% business / 100% advertising and does not expose the business portal or
+> deliver business playlists. The two-zone and business-portal steps below describe
+> the previous product and are not current acceptance instructions. The Android
+> player is outside this repository; its support for the 0/100 layout and actual
+> full-display playback has not been verified here. Existing devices must accept
+> the regenerated manifest before this change can take effect.
+
 Alter 0.1.20 reports the visible screen about every three seconds. The dashboard displays the reported layout, media identity and playback position while the report is fresh. A browser live stream has its own buffer; this is a playback-state preview, not a pixel capture of the TV.
 
 ## Deployment order

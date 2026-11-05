@@ -45,7 +45,7 @@ class CampaignRequest extends FormRequest
             'creatives.*.duration' => ['required', 'integer', 'between:3,86400'],
             'creatives.*.weight' => ['required', 'integer', 'between:1,100'],
             'creatives.*.configuration' => ['nullable', 'array:display_mode,audio,starts_at,ends_at,fallback_media_id,size_acknowledged'],
-            'creatives.*.configuration.display_mode' => ['required_with:creatives.*.configuration', 'in:advertising_zone,business_zone,fullscreen'],
+            'creatives.*.configuration.display_mode' => ['required_with:creatives.*.configuration', 'in:fullscreen'],
             'creatives.*.configuration.audio' => ['boolean'],
             'creatives.*.configuration.starts_at' => ['required_with:creatives.*.configuration', 'date'],
             'creatives.*.configuration.ends_at' => ['required_with:creatives.*.configuration', 'date', 'after:creatives.*.configuration.starts_at'],

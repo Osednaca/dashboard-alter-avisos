@@ -4,11 +4,8 @@ import {
     ArrowLeft,
     Check,
     Image as ImageIcon,
-    Layers,
-    MonitorPlay,
     Search,
     Send,
-    Sparkles,
     Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -61,12 +58,6 @@ interface Options {
     counts: { devices: number; businesses: number; locations: number };
 }
 
-const modeIcons: Record<string, typeof Layers> = {
-    advertising: Layers,
-    business: MonitorPlay,
-    fullscreen: Sparkles,
-};
-
 export default function QuickPlayCreate({ options, portal = 'admin' }: { options: Options; portal?: 'admin' | 'business' }) {
     const { can } = usePermissions();
     const PageLayout = portal === 'business' ? BusinessLayout : AdminLayout;
@@ -75,7 +66,7 @@ export default function QuickPlayCreate({ options, portal = 'admin' }: { options
 
     const form = useForm({
         media_asset_id: null as number | null,
-        display_mode: portal === 'business' ? 'business' : 'advertising',
+        display_mode: 'fullscreen',
         scope: 'devices',
         duration: 10,
         natural_duration: false,
@@ -162,7 +153,7 @@ export default function QuickPlayCreate({ options, portal = 'admin' }: { options
             <PageHeader
                 eyebrow="Reproducción inmediata"
                 title="Enviar contenido ahora"
-                description="Sube o elige una creatividad y envíala al instante a las pantallas seleccionadas."
+                description="Sube o elige una creatividad y envíala al instante a los avisos LED seleccionados."
                 actions={
                     <Button variant="ghost" size="sm" asChild>
                         <Link href={basePath}>
@@ -225,12 +216,12 @@ export default function QuickPlayCreate({ options, portal = 'admin' }: { options
                         <CardHeader>
                             <CardTitle>2 · Destino</CardTitle>
                             <span className="text-xs text-muted">
-                                <span className="metric text-fg">{formatNumber(targetCount)}</span> pantallas
+                                <span className="metric text-fg">{formatNumber(targetCount)}</span> avisos LED
                             </span>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {portal === 'business' ? (
-                                <p className="text-sm text-muted">Selecciona las pantallas de tu negocio donde quieres reproducir el contenido.</p>
+                                <p className="text-sm text-muted">Selecciona los avisos LED donde quieres reproducir el contenido.</p>
                             ) : <Tabs value={data.scope} onValueChange={(value) => setData('scope', value)}>
                                 <TabsList className="grid w-full grid-cols-2 sm:flex">
                                     {options.scopes.map((scope) => (
@@ -248,7 +239,7 @@ export default function QuickPlayCreate({ options, portal = 'admin' }: { options
                                         <Input
                                             value={deviceSearch}
                                             onChange={(event) => setDeviceSearch(event.target.value)}
-                                            placeholder={portal === 'business' ? 'Buscar pantalla o ciudad…' : 'Buscar pantalla, negocio o ciudad…'}
+                                            placeholder={portal === 'business' ? 'Buscar aviso LED o ciudad…' : 'Buscar aviso LED, negocio o ciudad…'}
                                             className="pl-9"
                                         />
                                     </div>
@@ -270,7 +261,7 @@ export default function QuickPlayCreate({ options, portal = 'admin' }: { options
                                     items={options.businesses.map((business) => ({
                                         id: business.id,
                                         title: business.name,
-                                        subtitle: `${business.devices_count} pantallas`,
+                                        subtitle: `${business.devices_count} avisos LED`,
                                         online: true,
                                     }))}
                                     selected={data.business_ids}
@@ -293,7 +284,7 @@ export default function QuickPlayCreate({ options, portal = 'admin' }: { options
 
                             {data.scope === 'all' ? (
                                 <p className="rounded-control border border-info/25 bg-info/10 px-4 py-3 text-xs text-info">
-                                    Se enviará a las {formatNumber(options.counts.devices)} pantallas activas de la red.
+                                    Se enviará a los {formatNumber(options.counts.devices)} avisos LED activos de la red.
                                 </p>
                             ) : null}
 
@@ -308,32 +299,8 @@ export default function QuickPlayCreate({ options, portal = 'admin' }: { options
                         <CardHeader>
                             <CardTitle>3 · Modo de visualización</CardTitle>
                         </CardHeader>
-                        <CardContent className={portal === 'business' ? 'space-y-2' : 'grid grid-cols-1 gap-3 sm:grid-cols-3'}>
-                            {portal === 'business' ? (
-                                <div className="rounded-control border border-accent/60 bg-accent/10 p-3">
-                                    <MonitorPlay className="mb-2 size-4 text-accent" />
-                                    <p className="text-xs font-medium text-fg">Zona del negocio</p>
-                                    <p className="mt-1 text-xs text-muted">El contenido se reproduce dentro del espacio de tu negocio en el layout de la pantalla.</p>
-                                </div>
-                            ) : options.displayModes.map((mode) => {
-                                const Icon = modeIcons[mode.value] ?? Layers;
-                                const selected = data.display_mode === mode.value;
-                                return (
-                                    <button
-                                        key={mode.value}
-                                        type="button"
-                                        onClick={() => setData('display_mode', mode.value)}
-                                        className={cn(
-                                            'rounded-control border p-3 text-left transition-colors',
-                                            selected ? 'border-accent/60 bg-accent/10' : 'border-line hover:border-line-strong',
-                                        )}
-                                    >
-                                        <Icon className={cn('mb-2 size-4', selected ? 'text-accent' : 'text-faint')} />
-                                        <p className="text-xs font-medium text-fg">{mode.label}</p>
-                                        <p className="mt-1 text-[11px] leading-relaxed text-muted">{mode.description}</p>
-                                    </button>
-                                );
-                            })}
+                        <CardContent className="space-y-2">
+                            <p className="rounded-control border border-accent/60 bg-accent/10 p-3 text-xs font-medium text-fg">Pantalla completa</p>
                             {errors.display_mode ? <p className="text-xs text-danger">{errors.display_mode}</p> : null}
                         </CardContent>
                     </Card>
@@ -431,11 +398,11 @@ export default function QuickPlayCreate({ options, portal = 'admin' }: { options
                                     label="Duración"
                                     value={isVideo && data.natural_duration ? 'Natural del video' : `${effectiveDuration ?? data.duration} s`}
                                 />
-                                <SummaryRow label="Pantallas" value={formatNumber(targetCount)} emphasize />
+                                <SummaryRow label="Avisos LED" value={formatNumber(targetCount)} emphasize />
 
                                 <div className="rounded-control border border-line bg-surface px-3 py-2 text-[11px] leading-relaxed text-faint">
-                                    Al finalizar, cada pantalla reanuda su contenido programado. Las pantallas
-                                    desconectadas se marcarán como no entregadas.
+                                    Al finalizar, cada aviso LED reanuda su contenido programado. Los avisos LED
+                                    desconectados se marcarán como no entregados.
                                 </div>
 
                                 <Button variant="primary" className="w-full" onClick={submit} disabled={!canSubmit || form.processing}>

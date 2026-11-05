@@ -148,7 +148,7 @@ class PlaybackSourceResolver
         if (! $delivery || $delivery->status->isTerminal() || ! $play || $play->trashed()
             || ! $play->expires_at || $play->expires_at->isPast()
             || ($play->business_id !== null && (int) $play->business_id !== (int) $device->business_id)
-            || $delivery->display_mode->value !== $name
+            || ($delivery->display_mode->value !== $name && $name !== 'fullscreen')
             || ! $command || (int) $command->device_id !== (int) $device->id || $command->command !== DeviceCommandType::QuickPlay
             || (int) $command->id !== (int) ($zone['command_id'] ?? 0)
             || ($command->expires_at !== null && $command->expires_at->isPast())
@@ -176,6 +176,6 @@ class PlaybackSourceResolver
 
     private function invalid(string $key): never
     {
-        throw ValidationException::withMessages([$key => 'La fuente reportada no pertenece a una entrega autorizada de esta pantalla.']);
+        throw ValidationException::withMessages([$key => 'La fuente reportada no pertenece a una entrega autorizada de este aviso LED.']);
     }
 }

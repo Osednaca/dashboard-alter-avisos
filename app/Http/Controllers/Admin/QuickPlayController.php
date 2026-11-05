@@ -113,7 +113,7 @@ class QuickPlayController extends Controller
 
         return redirect()
             ->route('quick-play.show', $quickPlay)
-            ->with('success', 'Reproducción inmediata enviada a '.$quickPlay->targets_count.' pantalla(s).');
+            ->with('success', 'Reproducción inmediata enviada a '.$quickPlay->targets_count.' aviso(s) LED.');
     }
 
     public function show(QuickPlay $quickPlay): Response
@@ -143,7 +143,7 @@ class QuickPlayController extends Controller
         $audit->handle($this->portal.'.quick_play.retried', $source, [], ['retry_id' => $attempt->id, 'targets' => $attempt->targets_count]);
 
         return redirect()->route($this->portal === 'business' ? 'business.quick-play.show' : 'quick-play.show', $attempt)
-            ->with('success', 'Reintento preparado para '.$attempt->targets_count.' pantalla(s). Revisa el estado de entrega.');
+            ->with('success', 'Reintento preparado para '.$attempt->targets_count.' aviso(s) LED. Revisa el estado de entrega.');
     }
 
     public function destroy(QuickPlay $quickPlay, DeleteQuickPlay $delete, RecordAudit $audit): RedirectResponse
@@ -207,7 +207,7 @@ class QuickPlayController extends Controller
                     'devices_count' => $location->devices_count,
                 ])
                 ->all(),
-            'displayModes' => collect(QuickPlayDisplayMode::cases())
+            'displayModes' => collect([QuickPlayDisplayMode::Fullscreen])
                 ->map(fn (QuickPlayDisplayMode $mode) => [
                     'value' => $mode->value,
                     'label' => $mode->label(),
