@@ -1,0 +1,17 @@
+{
+    "id": "/",
+    "name": "Alter · Panel de administración",
+    "short_name": "Alter",
+    "description": "Administración de negocios, contenido y pantallas Alter.",
+    "lang": "es",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#060f19",
+    "theme_color": "#060f19",
+    "icons": [
+        { "src": "/icons/alter-192-20261003.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "/icons/alter-512-20261003.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "/icons/alter-maskable-512-20261003.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ]
+}

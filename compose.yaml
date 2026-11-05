@@ -1,0 +1,22 @@
+# For Docker Compose deployments. EasyPanel App services need the equivalent Mount.
+# Existing DB_* / APP_KEY / APP_URL remain in .env; this does not create a database.
+services:
+  dashboard:
+    build:
+      context: .
+      target: production
+    env_file: .env
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      MEDIA_DISK: public
+      FILESYSTEM_DISK: public
+    ports:
+      - "127.0.0.1:${APP_HTTP_PORT:-8080}:80"
+    volumes:
+      - signage-media:/var/www/html/storage/app/public
+    restart: unless-stopped
+
+volumes:
+  signage-media:
+    name: signage-media

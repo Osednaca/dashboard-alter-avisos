@@ -1,0 +1,24 @@
+.git
+.github
+.idea
+.vscode
+.env
+.env.*
+!.env.example
+node_modules
+vendor
+public/build
+bootstrap/cache/*.php
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/inertia-devtools
+tests
+npm-debug.log*
+yarn-error.log*
+README.md
+
+# Runtime uploads must live in a persistent volume, never in a new image.
+storage/app/*
+public/storage

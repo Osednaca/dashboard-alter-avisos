@@ -1,0 +1,156 @@
+@import 'tailwindcss';
+
+/*
+ |--------------------------------------------------------------------------
+ | Alter — design tokens
+ |--------------------------------------------------------------------------
+ | A control-room palette: deep broadcast navy, signal-amber accent, and
+ | semantic status colors. Borders carry separation; shadows stay ambient
+ | and faint so dense data reads cleanly.
+ */
+@theme {
+    /* Surfaces */
+    --color-canvas: #06111c;
+    --color-surface: #091826;
+    --color-card: #0d1c2b;
+    --color-elevated: #122336;
+    --color-inset: #08131f;
+
+    /* Lines */
+    --color-line: #1b3042;
+    --color-line-strong: #274158;
+
+    /* Text */
+    --color-fg: #f5f7fa;
+    --color-muted: #8fa2b5;
+    --color-faint: #5f7488;
+
+    /* Signal accent */
+    --color-accent: #ffc83d;
+    --color-accent-strong: #ffb000;
+    --color-accent-soft: #3a2f14;
+
+    /* Semantic */
+    --color-positive: #35d07f;
+    --color-positive-soft: #102c1f;
+    --color-warning: #ffb020;
+    --color-warning-soft: #33270f;
+    --color-danger: #ff5a5f;
+    --color-danger-soft: #351b20;
+    --color-info: #4da3ff;
+    --color-info-soft: #10263f;
+
+    /* Typography */
+    --font-sans: 'Sora', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    /* Radii */
+    --radius-control: 9px;
+    --radius-card: 14px;
+    --radius-panel: 18px;
+
+    /* Motion */
+    --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+    * {
+        border-color: var(--color-line);
+    }
+
+    html {
+        color-scheme: dark;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+
+    body {
+        background-color: var(--color-canvas);
+        /* Prevent accidental horizontal scroll on phones without breaking sticky. */
+        overflow-x: clip;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Larger, comfortable tap targets on touch devices. */
+    @media (pointer: coarse) {
+        button,
+        [role='button'],
+        a {
+            touch-action: manipulation;
+        }
+    }
+
+    ::selection {
+        background: color-mix(in oklab, var(--color-accent) 30%, transparent);
+        color: var(--color-fg);
+    }
+
+    :focus-visible {
+        outline: 2px solid color-mix(in oklab, var(--color-accent) 70%, transparent);
+        outline-offset: 2px;
+    }
+
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: var(--color-line);
+        border: 3px solid var(--color-canvas);
+        border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--color-line-strong);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.001ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.001ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
+}
+
+@layer components {
+    /* A faint ambient lift used on floating surfaces only. */
+    .shadow-float {
+        box-shadow:
+            0 1px 0 0 rgb(255 255 255 / 0.02) inset,
+            0 18px 40px -24px rgb(0 0 0 / 0.7);
+    }
+
+    .shadow-pop {
+        box-shadow:
+            0 0 0 1px var(--color-line),
+            0 24px 60px -20px rgb(0 0 0 / 0.75);
+    }
+
+    .metric {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em;
+    }
+
+    /* Broadcast level meter used across KPI cards. */
+    .meter {
+        background: linear-gradient(
+            90deg,
+            var(--color-accent) 0%,
+            var(--color-accent-strong) 100%
+        );
+    }
+}
+
+@utility scrollbar-none {
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
