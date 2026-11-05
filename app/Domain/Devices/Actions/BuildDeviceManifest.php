@@ -203,5 +203,4 @@ class BuildDeviceManifest
             ->sortByDesc('priority')
             ->values();
     }
-
 }

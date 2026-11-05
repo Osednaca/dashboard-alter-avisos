@@ -19,5 +19,5 @@ Criterios de aceptación: no existe acceso funcional al dashboard de restaurante
 
 Progreso: exploración inicial completada. Siguiente paso: implementar por unidades con pruebas y commits convencionales. Conteo de líneas y límites de slices pendientes.
 
-LED-2 verificado: PHPUnit focal 64 pruebas/490 aserciones (entorno SQLite aislado, APP_URL HTTPS); frontend 41 pruebas; typecheck y build correctos. Primer intento falló por APP_KEY/build ausentes y otro por APP_URL HTTP; corregidos solo en entorno de prueba. RDD disabled/unmanaged. Compatibilidad física Android no verificada. Commit: se registrará en la siguiente actualización. Rollback: archivos del manifiesto, reproducción, formularios y sus pruebas de este commit.
-
+LED-2 verificado: PHPUnit focal 64 pruebas/490 aserciones (entorno SQLite aislado, APP_URL HTTPS); frontend 41 pruebas; typecheck y build correctos. Primer intento falló por APP_KEY/build ausentes y otro por APP_URL HTTP; corregidos solo en entorno de prueba. RDD disabled/unmanaged. Compatibilidad física Android no verificada. Commit: 722c449; slice 1, 388 líneas propias (230 altas + 158 bajas). La comprobación del diff detectó una línea vacía final en este documento, corregida a continuación. Rollback: archivos del manifiesto, reproducción, formularios y sus pruebas de este commit.
+Pint detectó formato en el manifiesto y su prueba; corregido y verificado. PHPUnit FullscreenAdvertisingTest: 3 pruebas, 23 aserciones. Commit correctivo pendiente de registrar.
