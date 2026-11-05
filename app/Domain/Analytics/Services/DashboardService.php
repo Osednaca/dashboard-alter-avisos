@@ -5,7 +5,6 @@ namespace App\Domain\Analytics\Services;
 use App\Domain\Analytics\Models\CampaignDailyStat;
 use App\Domain\Analytics\Models\CityDailyStat;
 use App\Domain\Analytics\Models\DeviceDailyStat;
-use App\Domain\Businesses\Models\Business;
 use App\Domain\Campaigns\Enums\CampaignStatus;
 use App\Domain\Campaigns\Models\Campaign;
 use App\Domain\Devices\Models\Device;
@@ -48,10 +47,6 @@ class DashboardService
                     'value' => $deviceCounts['online'] ?? 0,
                     'total' => array_sum($deviceCounts),
                     'breakdown' => $deviceCounts,
-                ],
-                'businesses' => [
-                    'value' => Business::query()->where('status', 'active')->count(),
-                    'total' => Business::query()->count(),
                 ],
                 'campaigns' => [
                     'value' => Campaign::query()->where('status', CampaignStatus::Active->value)->count(),
@@ -227,11 +222,20 @@ class DashboardService
     {
         $device = Device::query()
             ->when($deviceId !== null, fn ($query) => $query->whereKey($deviceId))
-            ->with(['business', 'location', 'currentLayout', 'currentPlaylist'])
+            ->with(['business', 'location', 'cities', 'currentLayout', 'currentPlaylist'])
             ->orderBy('id')
             ->first();
 
-        return $device ? app(DevicePreviewService::class)->forDevice($device) : null;
+        if (! $device) {
+            return null;
+        }
+        $preview = app(DevicePreviewService::class)->forDevice($device);
+        $preview['business_media'] = null;
+        $preview['playlist'] = null;
+        $preview['device']['current_playlist'] = null;
+        unset($preview['playback']['zones']['business']);
+
+        return $preview;
     }
 
     /**

@@ -133,7 +133,7 @@ export default function BusinessesIndex({
         },
         {
             key: 'devices',
-            header: 'Pantallas',
+            header: 'Avisos LED',
             cell: (row) => (
                 <span className="inline-flex items-center gap-1.5 text-muted">
                     <MonitorPlay className="size-3.5 text-faint" />
@@ -196,7 +196,7 @@ export default function BusinessesIndex({
 
             <PageHeader
                 title="Negocios"
-                description="Empresas que operan pantallas en la red."
+                description="Empresas que operan avisos LED en la red."
                 actions={
                     <Button variant="primary" size="sm" onClick={openCreate}>
                         <Plus className="size-4" />
@@ -280,7 +280,7 @@ export default function BusinessesIndex({
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <FormField label="Nombre" error={form.errors.name} className="sm:col-span-2">
-                            <Input value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="Restaurante La Hamburguesería" />
+                            <Input value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="Empresa de ejemplo" />
                         </FormField>
                         <FormField label="Categoría" error={form.errors.category}>
                             <Select value={form.data.category} onValueChange={(value) => form.setData('category', value)}>
@@ -339,7 +339,7 @@ export default function BusinessesIndex({
                 open={!!deleting}
                 onOpenChange={(open) => (!open ? setDeleting(null) : null)}
                 title={`Eliminar ${deleting?.name ?? ''}`}
-                description="Se eliminarán sus ubicaciones, pantallas y contenido asociado. Esta acción no se puede deshacer."
+                description="Se eliminarán sus ubicaciones, avisos LED y contenido asociado. Esta acción no se puede deshacer."
                 confirmLabel="Eliminar negocio"
                 onConfirm={() => {
                     if (!deleting) return;

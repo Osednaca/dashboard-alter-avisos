@@ -50,10 +50,6 @@ class EntityPresenter
 
     public static function user(User $user): array
     {
-        $primaryBusiness = $user->relationLoaded('businesses')
-            ? ($user->businesses->first(fn ($business) => (bool) $business->pivot->is_primary) ?? $user->businesses->first())
-            : null;
-
         return [
             'id' => $user->id,
             'name' => $user->name,
@@ -63,8 +59,6 @@ class EntityPresenter
             'initials' => $user->initials(),
             'status' => self::enum($user->status),
             'roles' => $user->roleNames(),
-            'business_id' => $primaryBusiness?->id,
-            'business_name' => $primaryBusiness?->name,
             'last_login_at' => $user->last_login_at?->toIso8601String(),
             'created_at' => $user->created_at?->toIso8601String(),
         ];
@@ -79,7 +73,7 @@ class EntityPresenter
             'description' => $role->description,
             'is_system' => $role->is_system,
             'permissions' => $role->relationLoaded('permissions')
-                ? $role->permissions->pluck('name')->all()
+                ? $role->permissions->pluck('name')->reject(fn ($name) => str_starts_with($name, 'business.') || str_starts_with($name, 'businesses.'))->values()->all()
                 : [],
             'users_count' => $role->users_count ?? null,
         ];
@@ -148,12 +142,10 @@ class EntityPresenter
             'name' => $device->name,
             'status' => self::enum($device->status),
             'is_online' => $device->isOnline(),
-            'business' => $device->relationLoaded('business') && $device->business
-                ? ['id' => $device->business->id, 'name' => $device->business->name]
-                : null,
-            'location' => $device->relationLoaded('location') && $device->location
-                ? ['id' => $device->location->id, 'name' => $device->location->name, 'city' => $device->location->city]
-                : null,
+            'location' => null,
+            'cities' => $device->relationLoaded('cities')
+                ? $device->cities->map(fn ($city) => ['id' => $city->id, 'name' => $city->name])->values()->all()
+                : [],
             'app_version' => $device->app_version,
             'last_seen_at' => $device->last_seen_at?->toIso8601String(),
             'last_sync_at' => $device->last_sync_at?->toIso8601String(),
@@ -165,10 +157,7 @@ class EntityPresenter
             'current_layout' => $device->relationLoaded('currentLayout') && $device->currentLayout
                 ? ['id' => $device->currentLayout->id, 'name' => $device->currentLayout->name, 'ratio' => $device->currentLayout->ratioLabel()]
                 : null,
-            'current_playlist' => $device->relationLoaded('currentPlaylist') && $device->currentPlaylist
-                && ($device->currentPlaylist->business_id === null || (int) $device->currentPlaylist->business_id === (int) $device->business_id)
-                ? ['id' => $device->currentPlaylist->id, 'name' => $device->currentPlaylist->name]
-                : null,
+            'current_playlist' => null,
             'created_at' => $device->created_at?->toIso8601String(),
         ];
     }
@@ -197,11 +186,9 @@ class EntityPresenter
             'status' => self::enum($activation->status),
             'device_uuid' => $activation->device_uuid,
             'device_name' => $activation->device_name,
-            'business' => $activation->relationLoaded('business') && $activation->business
-                ? ['id' => $activation->business->id, 'name' => $activation->business->name]
-                : null,
-            'location' => $activation->relationLoaded('location') && $activation->location
-                ? ['id' => $activation->location->id, 'name' => $activation->location->name]
+            'assigned' => $activation->business_id !== null,
+            'city' => $activation->relationLoaded('city') && $activation->city
+                ? ['id' => $activation->city->id, 'name' => $activation->city->name]
                 : null,
             'app_version' => $activation->app_version,
             'ip_address' => $activation->ip_address,
@@ -387,12 +374,7 @@ class EntityPresenter
                 ? [
                     'id' => $row->device->id,
                     'name' => $row->device->name,
-                    'business' => $row->device->relationLoaded('business') && $row->device->business
-                        ? $row->device->business->name
-                        : null,
-                    'city' => $row->device->relationLoaded('location') && $row->device->location
-                        ? $row->device->location->city
-                        : null,
+                    'city' => $row->device->relationLoaded('cities') ? $row->device->cities->pluck('name')->join(', ') : null,
                 ]
                 : null,
             'status' => self::enum($row->status),

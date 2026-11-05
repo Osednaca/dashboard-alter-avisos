@@ -93,7 +93,7 @@ export default function BusinessShow({
         { key: 'address', header: 'Dirección', cell: (row) => <span className="text-muted">{row.address ?? '—'}</span> },
         {
             key: 'screens',
-            header: 'Pantallas',
+            header: 'Avisos LED',
             cell: (row) => (
                 <span className="metric text-fg">
                     {row.online_devices_count}
@@ -105,7 +105,7 @@ export default function BusinessShow({
     ];
 
     const deviceColumns: Array<Column<DeviceEntity>> = [
-        { key: 'name', header: 'Pantalla', cell: (row) => <span className="font-medium text-fg">{row.name}</span> },
+        { key: 'name', header: 'Aviso LED', cell: (row) => <span className="font-medium text-fg">{row.name}</span> },
         { key: 'location', header: 'Ubicación', cell: (row) => <span className="text-muted">{row.location?.name ?? '—'}</span> },
         { key: 'status', header: 'Estado', cell: (row) => <StatusBadge value={row.status} /> },
         { key: 'version', header: 'App', cell: (row) => <span className="metric text-muted">{row.app_version ?? '—'}</span> },
@@ -124,7 +124,7 @@ export default function BusinessShow({
         },
         { key: 'advertiser', header: 'Anunciante', cell: (row) => <span className="text-muted">{row.advertiser?.name ?? '—'}</span> },
         { key: 'status', header: 'Estado', cell: (row) => <StatusBadge value={row.status} /> },
-        { key: 'screens', header: 'Pantallas', cell: (row) => <span className="metric text-fg">{row.target_screen_count}</span> },
+        { key: 'screens', header: 'Avisos LED', cell: (row) => <span className="metric text-fg">{row.target_screen_count}</span> },
     ];
 
     return (
@@ -134,7 +134,7 @@ export default function BusinessShow({
             <PageHeader
                 eyebrow={business.category.label}
                 title={business.name}
-                description={`${business.locations_count} ubicaciones · ${business.devices_count} pantallas · ${business.timezone}`}
+                description={`${business.locations_count} ubicaciones · ${business.devices_count} avisos LED · ${business.timezone}`}
                 actions={<StatusBadge value={business.status} />}
             />
 
@@ -142,7 +142,7 @@ export default function BusinessShow({
                 <TabsList>
                     <TabsTrigger value="overview">Resumen</TabsTrigger>
                     <TabsTrigger value="locations">Ubicaciones</TabsTrigger>
-                    <TabsTrigger value="devices">Pantallas</TabsTrigger>
+                    <TabsTrigger value="devices">Avisos LED</TabsTrigger>
                     <TabsTrigger value="content">Contenido</TabsTrigger>
                     <TabsTrigger value="campaigns">Campañas</TabsTrigger>
                     <TabsTrigger value="analytics">Analíticas</TabsTrigger>
@@ -165,7 +165,7 @@ export default function BusinessShow({
                             <CardContent className="flex items-center gap-3 pt-4">
                                 <MonitorPlay className="size-5 text-accent" />
                                 <div>
-                                    <p className="text-xs text-muted">Pantallas</p>
+                                    <p className="text-xs text-muted">Avisos LED</p>
                                     <p className="metric text-xl text-fg">{business.devices_count}</p>
                                 </div>
                             </CardContent>
@@ -228,7 +228,7 @@ export default function BusinessShow({
                                 columns={deviceColumns}
                                 rows={devices}
                                 keyExtractor={(row) => row.id}
-                                empty={<EmptyState icon={MonitorPlay} title="Sin pantallas" />}
+                                empty={<EmptyState icon={MonitorPlay} title="Sin avisos LED" />}
                             />
                         </CardContent>
                     </Card>

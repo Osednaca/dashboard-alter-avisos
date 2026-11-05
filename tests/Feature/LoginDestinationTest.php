@@ -15,49 +15,27 @@ class LoginDestinationTest extends TestCase
 {
     use CreatesUsers, RefreshDatabase;
 
-    public function test_switching_from_admin_to_business_discards_admin_destination_and_context(): void
+    public function test_legacy_portal_routes_are_unavailable_for_guests_and_staff(): void
     {
-        $admin = $this->superAdmin(['password' => 'password']);
-        $business = Business::factory()->create();
-        $user = $this->businessUser($business, ['password' => 'password']);
-
-        $this->login($admin)->assertRedirect(route('dashboard'));
-        $this->get('/admin/dashboard')->assertOk()
-            ->assertHeader('Cache-Control', 'no-store, private')
-            ->assertViewHas('page', fn ($page) => ($page['encryptHistory'] ?? false) === true);
-        $this->post('/logout')->assertRedirect(route('login'));
-        $this->get('/admin/campaigns')->assertRedirect(route('login'));
-
-        $this->withSession(['business_id' => 987654]);
-        $this->login($user)
-            ->assertRedirect(route('business.dashboard'))
-            ->assertSessionMissing('url.intended')
-            ->assertSessionMissing('business_id');
-
-        $businessPage = $this->get('/business/dashboard')->assertOk()
-            ->assertHeader('Cache-Control', 'no-store, private')
-            ->assertViewHas('page', fn ($page) => ($page['clearHistory'] ?? false) === true
-                && ($page['encryptHistory'] ?? false) === true);
-        $this->withHeaders([
-            'X-Inertia' => 'true',
-            'X-Inertia-Version' => $businessPage->viewData('page')['version'] ?? '',
-        ])->get('/business/dashboard')->assertOk()
-            ->assertHeader('X-Inertia', 'true')
-            ->assertHeader('Cache-Control', 'no-store, private');
-        $this->flushHeaders();
-        $this->get('/admin/campaigns')->assertForbidden();
+        $this->get('/business/dashboard')->assertNotFound();
+        $this->actingAs($this->superAdmin())->get('/business/library')->assertNotFound();
     }
 
-    public function test_switching_from_business_to_staff_discards_a_business_destination(): void
+    public function test_legacy_business_only_account_cannot_sign_in_to_the_administration_panel(): void
     {
         $user = $this->businessUser(Business::factory()->create(), ['password' => 'password']);
+
+        $this->login($user)->assertSessionHasErrors('email');
+        $this->assertGuest();
+        $this->assertDatabaseHas('business_users', ['user_id' => $user->id]);
+    }
+
+    public function test_a_removed_portal_destination_falls_back_to_the_admin_dashboard(): void
+    {
         $admin = $this->superAdmin(['password' => 'password']);
 
-        $this->login($user)->assertRedirect(route('business.dashboard'));
-        $this->post('/logout');
-        $this->get('/business/schedule')->assertRedirect(route('login'));
-
-        $this->login($admin)->assertRedirect(route('dashboard'));
+        $this->withSession(['url.intended' => '/business/schedule']);
+        $this->login($admin)->assertRedirect(route('dashboard'))->assertSessionMissing('url.intended');
     }
 
     public function test_staff_intended_route_checks_its_permissions(): void
@@ -72,15 +50,6 @@ class LoginDestinationTest extends TestCase
         $this->withSession(['url.intended' => '/admin/devices?search=Pantalla']);
         $this->login($operator)->assertRedirect('/admin/devices?search=Pantalla');
         $this->get('/admin/devices?search=Pantalla')->assertOk();
-    }
-
-    public function test_business_intended_navigation_is_retained_for_an_assigned_user(): void
-    {
-        $user = $this->businessUser(Business::factory()->create(), ['password' => 'password']);
-
-        $this->withSession(['url.intended' => route('business.library.index')]);
-        $this->login($user)->assertRedirect('/business/library');
-        $this->get('/business/library')->assertOk();
     }
 
     public function test_logout_clears_inertia_history_on_the_next_login_page(): void

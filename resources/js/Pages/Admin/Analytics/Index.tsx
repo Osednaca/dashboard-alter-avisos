@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Activity, BarChart3, Clock, Download, MonitorPlay, Target, TrendingUp, Users } from 'lucide-react';
+import { Activity, BarChart3, Clock, Download, MonitorPlay, Target, TrendingUp } from 'lucide-react';
 import {
     Area,
     AreaChart,
@@ -21,7 +21,7 @@ import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { AdminLayout } from '@/Layouts/AdminLayout';
-import type { Option, Paginated, SeriesPoint } from '@/Types';
+import type { Paginated, SeriesPoint } from '@/Types';
 import { formatCompact, formatNumber } from '@/Utils/format';
 
 interface CampaignRow {
@@ -38,10 +38,8 @@ interface CampaignRow {
 interface Options {
     campaigns: Array<{ id: number; name: string }>;
     advertisers: Array<{ id: number; name: string }>;
-    businesses: Array<{ id: number; name: string }>;
     cities: string[];
     devices: Array<{ id: number; name: string }>;
-    categories: Option[];
 }
 
 export default function AnalyticsIndex({
@@ -62,11 +60,10 @@ export default function AnalyticsIndex({
         failures: number;
         duration: number;
         screens: number;
-        businesses: number;
         uptimeHours: number;
     };
     series: SeriesPoint[];
-    breakdowns: { cities: Array<{ label: string; playbacks: number; devices: number }>; categories: Array<{ label: string; playbacks: number }> };
+    breakdowns: { cities: Array<{ label: string; playbacks: number; devices: number }> };
     campaigns: Paginated<CampaignRow>;
     options: Options;
 }) {
@@ -157,19 +154,6 @@ export default function AnalyticsIndex({
                         ))}
                     </SelectContent>
                 </Select>
-                <Select value={filters.business_id ?? 'all'} onValueChange={(value) => applyFilter({ business_id: value === 'all' ? '' : value })}>
-                    <SelectTrigger className="w-full sm:w-48">
-                        <SelectValue placeholder="Negocio" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Todos los negocios</SelectItem>
-                        {options.businesses.map((business) => (
-                            <SelectItem key={business.id} value={String(business.id)}>
-                                {business.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
                 <Select value={filters.city ?? 'all'} onValueChange={(value) => applyFilter({ city: value === 'all' ? '' : value })}>
                     <SelectTrigger className="w-full sm:w-40">
                         <SelectValue placeholder="Ciudad" />
@@ -183,25 +167,11 @@ export default function AnalyticsIndex({
                         ))}
                     </SelectContent>
                 </Select>
-                <Select value={filters.category ?? 'all'} onValueChange={(value) => applyFilter({ category: value === 'all' ? '' : value })}>
-                    <SelectTrigger className="w-full sm:w-44">
-                        <SelectValue placeholder="Categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Todas las categorías</SelectItem>
-                        {options.categories.map((category) => (
-                            <SelectItem key={category.value} value={category.value}>
-                                {category.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-4 xl:grid-cols-4">
                 <StatCard label="Reproducciones" value={metrics.playbacks} icon={Activity} />
-                <StatCard label="Pantallas únicas" value={metrics.screens} icon={MonitorPlay} delay={80} />
-                <StatCard label="Negocios únicos" value={metrics.businesses} icon={Users} delay={160} />
+                <StatCard label="Avisos LED únicos" value={metrics.screens} icon={MonitorPlay} delay={80} />
                 <StatCard label="Tasa de finalización" value={`${metrics.completionRate}%`} icon={TrendingUp} delay={240} />
             </div>
             <div className="mt-4 grid grid-cols-2 gap-4 xl:grid-cols-4">
@@ -238,7 +208,7 @@ export default function AnalyticsIndex({
                 </CardContent>
             </Card>
 
-            <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-4">
                 <Card>
                     <CardHeader>
                         <CardTitle>Reproducciones por ciudad</CardTitle>
@@ -260,26 +230,6 @@ export default function AnalyticsIndex({
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Reproducciones por categoría</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {breakdowns.categories.length === 0 ? (
-                            <EmptyState icon={BarChart3} title="Sin datos" />
-                        ) : (
-                            <ResponsiveContainer width="100%" height={260}>
-                                <BarChart data={breakdowns.categories} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                                    <CartesianGrid stroke="#1b3042" vertical={false} />
-                                    <XAxis dataKey="label" tick={{ fill: '#5f7488', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                    <YAxis tick={{ fill: '#5f7488', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompact(v as number)} />
-                                    <Tooltip contentStyle={{ background: '#0d1c2b', border: '1px solid #1b3042', borderRadius: 10, fontSize: 12 }} cursor={{ fill: '#1b3042', opacity: 0.3 }} />
-                                    <Bar dataKey="playbacks" name="Reproducciones" fill="#4da3ff" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        )}
-                    </CardContent>
-                </Card>
             </div>
 
             <Card className="mt-4">

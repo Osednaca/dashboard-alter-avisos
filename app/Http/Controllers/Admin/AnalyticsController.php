@@ -6,11 +6,9 @@ use App\Domain\Advertisers\Models\Advertiser;
 use App\Domain\Analytics\Models\CampaignDailyStat;
 use App\Domain\Analytics\Models\CityDailyStat;
 use App\Domain\Analytics\Models\DeviceDailyStat;
-use App\Domain\Businesses\Enums\BusinessCategory;
-use App\Domain\Businesses\Models\Business;
 use App\Domain\Campaigns\Models\Campaign;
 use App\Domain\Devices\Models\Device;
-use App\Domain\Locations\Models\Location;
+use App\Domain\Locations\Models\City;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -38,10 +36,8 @@ class AnalyticsController extends Controller
             'options' => [
                 'campaigns' => Campaign::query()->orderBy('name')->get(['id', 'name']),
                 'advertisers' => Advertiser::query()->orderBy('name')->get(['id', 'name']),
-                'businesses' => Business::query()->orderBy('name')->get(['id', 'name']),
-                'cities' => Location::query()->distinct()->orderBy('city')->pluck('city'),
+                'cities' => City::query()->where('status', 'active')->orderBy('name')->distinct()->pluck('name'),
                 'devices' => Device::query()->orderBy('name')->get(['id', 'name']),
-                'categories' => BusinessCategory::options(),
             ],
         ]);
     }
@@ -85,10 +81,8 @@ class AnalyticsController extends Controller
             'to' => ['nullable', 'date', 'after_or_equal:from'],
             'campaign_id' => ['nullable', 'integer'],
             'advertiser_id' => ['nullable', 'integer'],
-            'business_id' => ['nullable', 'integer'],
             'city' => ['nullable', 'string'],
             'device_id' => ['nullable', 'integer'],
-            'category' => ['nullable', 'string'],
         ]);
 
         $to = isset($validated['to']) ? Carbon::parse($validated['to']) : today();
@@ -107,9 +101,7 @@ class AnalyticsController extends Controller
             ->join('devices', 'devices.id', '=', 'device_daily_stats.device_id')
             ->whereBetween('stat_date', [$from, $to])
             ->when($filters['device_id'] ?? null, fn ($q, $v) => $q->where('devices.id', $v))
-            ->when($filters['business_id'] ?? null, fn ($q, $v) => $q->where('devices.business_id', $v))
-            ->when($filters['city'] ?? null, fn ($q, $v) => $q->where('devices.location_id', Location::query()->where('city', $v)->select('id')))
-            ->when($filters['category'] ?? null, fn ($q, $v) => $q->where('devices.business_id', Business::query()->where('category', $v)->select('id')));
+            ->when($filters['city'] ?? null, fn ($q, $v) => $q->whereIn('devices.id', DB::table('city_device')->whereIn('city_id', City::query()->where('status', 'active')->where('name', $v)->select('id'))->select('device_id')));
 
         $row = $base()->selectRaw('
             SUM(playbacks_count) as playbacks,
@@ -123,8 +115,6 @@ class AnalyticsController extends Controller
         $playbacks = (int) ($row->playbacks ?? 0);
         $completed = (int) ($row->completed ?? 0);
 
-        $businesses = $base()->distinct()->count('devices.business_id');
-
         return [
             'playbacks' => $playbacks,
             'completed' => $completed,
@@ -132,7 +122,6 @@ class AnalyticsController extends Controller
             'failures' => (int) ($row->failures ?? 0),
             'duration' => (int) ($row->duration ?? 0),
             'screens' => (int) ($row->screens ?? 0),
-            'businesses' => $businesses,
             'uptimeHours' => round(((int) ($row->uptime ?? 0)) / 3600, 1),
         ];
     }
@@ -147,8 +136,7 @@ class AnalyticsController extends Controller
             ->join('devices', 'devices.id', '=', 'device_daily_stats.device_id')
             ->whereBetween('stat_date', [$from, $to])
             ->when($filters['device_id'] ?? null, fn ($q, $v) => $q->where('devices.id', $v))
-            ->when($filters['business_id'] ?? null, fn ($q, $v) => $q->where('devices.business_id', $v))
-            ->when($filters['city'] ?? null, fn ($q, $v) => $q->where('devices.location_id', Location::query()->where('city', $v)->select('id')));
+            ->when($filters['city'] ?? null, fn ($q, $v) => $q->whereIn('devices.id', DB::table('city_device')->whereIn('city_id', City::query()->where('status', 'active')->where('name', $v)->select('id'))->select('device_id')));
 
         return $query
             ->groupBy('stat_date')
@@ -180,18 +168,7 @@ class AnalyticsController extends Controller
                 ->get()
                 ->map(fn ($row) => ['label' => $row->city, 'playbacks' => (int) $row->playbacks, 'devices' => (int) $row->devices])
                 ->all(),
-            'categories' => DB::table('business_daily_stats')
-                ->join('businesses', 'businesses.id', '=', 'business_daily_stats.business_id')
-                ->whereBetween('stat_date', [$from, $to])
-                ->groupBy('businesses.category')
-                ->selectRaw('businesses.category as category, SUM(playbacks_count) as playbacks')
-                ->orderByDesc('playbacks')
-                ->get()
-                ->map(fn ($row) => [
-                    'label' => BusinessCategory::tryFrom($row->category)?->label() ?? $row->category,
-                    'playbacks' => (int) $row->playbacks,
-                ])
-                ->all(),
+
         ];
     }
 

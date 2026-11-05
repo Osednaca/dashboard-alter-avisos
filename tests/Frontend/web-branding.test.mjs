@@ -10,7 +10,7 @@ import * as icons from 'lucide-react';
 
 const require = createRequire(import.meta.url);
 const root = resolve(import.meta.dirname, '../../resources/js');
-const page = { url: '/business/dashboard', props: {
+const page = { url: '/admin/dashboard', props: {
     app: { name: 'Alter', logo_url: '/brand/alter-logo-20261003.png', version: '1.0.0' },
     flash: {}, auth: { user: null },
 } };
@@ -85,7 +85,7 @@ test('password visibility keeps the password masked even if a caller supplies ty
 test('forbidden-page recovery returns each account to its permitted dashboard', () => {
     const { default: ErrorPage } = load(resolve(root, 'Pages/Errors/Error.tsx'));
     for (const [permissions, destination] of [
-        [['business.dashboard.view'], '/business/dashboard'],
+        [['business.dashboard.view'], '/admin/dashboard'],
         [['devices.view'], '/admin/dashboard'],
         [['business.dashboard.view', 'devices.view'], '/admin/dashboard'],
     ]) {
@@ -108,10 +108,10 @@ test('sidebar retains an accessible Alter link while collapsed and expanded', ()
     const { SidebarShell } = load(resolve(root, 'Components/app/SidebarShell.tsx'));
     for (const collapsed of [true, false]) {
         const html = renderToStaticMarkup(React.createElement(SidebarShell, {
-            brand: { title: 'Alter', subtitle: 'Panel del negocio', href: '/business/dashboard' },
+            brand: { title: 'Alter', subtitle: 'Panel de administración', href: '/admin/dashboard' },
             sections: [], collapsed,
         }));
-        assert.match(html, /aria-label="Alter · Panel del negocio"/);
+        assert.match(html, /aria-label="Alter · Panel de administración"/);
         assert.match(html, /<img [^>]*src="\/brand\/alter-logo-20261003.png"/);
         assert.doesNotMatch(html, /Signage TV/);
     }
@@ -125,21 +125,4 @@ test('shared dashboard footer includes brand image and visible Alter name', () =
     assert.match(html, /<footer[\s\S]*src="\/brand\/alter-logo-20261003.png"/);
     assert.match(html, /Alter · Plataforma/);
     assert.doesNotMatch(html, /Signage TV/);
-});
-
-test('business menu keeps one Programación and hides retired menus even with permissions', () => {
-    const { BusinessSidebar } = load(resolve(root, 'Components/app/BusinessSidebar.tsx'));
-    page.props.auth.user = { roles: ['business_owner'], permissions: [
-        'business.dashboard.view', 'business.media.view', 'business.devices.view',
-        'business.schedules.view', 'business.settings.view', 'business.playlists.view', 'business.reports.view',
-    ] };
-    try {
-        const html = renderToStaticMarkup(React.createElement(BusinessSidebar, { collapsed: false }));
-        assert.equal((html.match(/href="\/business\/schedule"/g) ?? []).length, 1);
-        assert.match(html, />Programación</);
-        assert.match(html, /aria-label="Alter · Panel del negocio"/);
-        assert.doesNotMatch(html, /href="\/business\/(playlists|reports)"|>Contenido<|>Reportes</);
-    } finally {
-        page.props.auth.user = null;
-    }
 });

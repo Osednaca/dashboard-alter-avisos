@@ -7,6 +7,8 @@ use App\Domain\Devices\Enums\DeviceStatus;
 use App\Domain\Devices\Events\DeviceConnected;
 use App\Domain\Devices\Models\Device;
 use App\Domain\Devices\Models\DeviceActivation;
+use App\Domain\Locations\Actions\UpdateCityCampaigns;
+use App\Domain\Locations\Models\City;
 use App\Domain\Media\Models\Layout;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -37,7 +39,7 @@ class ConfirmDeviceActivation
             }
 
             if (! $activation->business_id) {
-                throw ValidationException::withMessages(['code' => 'El administrador aún no ha asignado este código a un negocio.']);
+                throw ValidationException::withMessages(['code' => 'El administrador aún no ha asignado este código.']);
             }
 
             if ($activation->device_id && $activation->device_uuid !== $deviceUuid) {
@@ -47,7 +49,7 @@ class ConfirmDeviceActivation
             $deviceUuid ??= $activation->device_uuid ?? (string) Str::uuid();
 
             $device = $activation->device ?? new Device(['uuid' => $deviceUuid]);
-            $deviceName = $name ?: ($activation->device_name ?: 'Pantalla '.substr($deviceUuid, 0, 4));
+            $deviceName = $name ?: ($activation->device_name ?: 'Aviso LED '.substr($deviceUuid, 0, 4));
             $layoutId = $device->exists
                 ? ($device->current_layout_id ?? Layout::query()->where('is_default', true)->value('id'))
                 : $this->createPortraitLayout($deviceName)->id;
@@ -64,6 +66,14 @@ class ConfirmDeviceActivation
                 'last_ip' => $ip,
                 'current_layout_id' => $layoutId,
             ])->save();
+
+            if ($activation->city_id && ($city = City::query()->find($activation->city_id))) {
+                app(UpdateCityCampaigns::class)->handle(
+                    fn () => $city->devices()->syncWithoutDetaching([$device->id]),
+                    [$city->name],
+                    $city->id,
+                );
+            }
 
             $token = $device->issueToken();
 

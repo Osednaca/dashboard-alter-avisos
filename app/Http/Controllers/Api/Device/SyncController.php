@@ -10,7 +10,6 @@ use App\Domain\Devices\Models\Device;
 use App\Domain\Operations\Actions\RaiseAlert;
 use App\Domain\Operations\Enums\AlertSeverity;
 use App\Domain\Operations\Enums\AlertType;
-use App\Domain\Scheduling\Services\ResolveActivePlaylist;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,12 +19,9 @@ class SyncController extends Controller
 {
     /**
      * Lightweight poll for configuration changes when the device is online.
-     * It also reconciles the active scheduled playlist, so a schedule change
-     * takes effect on the next poll even when no manifest was pushed.
      */
     public function show(
         Request $request,
-        ResolveActivePlaylist $activePlaylist,
         BuildDeviceManifest $builder,
     ): JsonResponse {
         /** @var Device $device */
@@ -36,15 +32,7 @@ class SyncController extends Controller
             app(BuildDeviceManifest::class)->handle($device);
             $device->refresh();
         }
-        $device->loadMissing(['business', 'location', 'currentPlaylist']);
-
-        $resolved = $activePlaylist->forDevice($device);
-
-        if ($resolved && (int) $device->current_playlist_id !== (int) $resolved->id) {
-            $builder->handle($device);
-            $device->refresh();
-        }
-        if ($builder->rebuildIfLiveEmbedsAreNoncanonical($device)) {
+        if ($builder->rebuildIfSnapshotIsOutdated($device)) {
             $device->refresh();
         }
 

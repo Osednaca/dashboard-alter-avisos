@@ -3,8 +3,8 @@ import {
     Activity,
     ArrowRight,
     BarChart3,
-    Building2,
     Megaphone,
+    MapPin,
     MonitorPlay,
     Plus,
     RefreshCw,
@@ -43,7 +43,6 @@ interface Overview {
     range: { from: string; to: string };
     kpis: {
         activeScreens: { value: number; total: number; breakdown: Record<string, number> };
-        businesses: { value: number; total: number };
         campaigns: { value: number; total: number };
         playbacksToday: { value: number; trend: number | null };
     };
@@ -97,7 +96,7 @@ export default function Dashboard({ overview, screenPreview, previewDevices }: {
             <PageHeader
                 eyebrow="Centro de operaciones"
                 title={`¡Hola, ${firstName}!`}
-                description="Estado de la red de pantallas, entrega de campañas y salud de dispositivos."
+                description="Estado de la red de avisos LED, entrega de campañas y salud de dispositivos."
                 actions={
                     <>
                         <DateRangePicker
@@ -120,20 +119,12 @@ export default function Dashboard({ overview, screenPreview, previewDevices }: {
 
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard
-                    label="Pantallas activas"
+                    label="Avisos LED activos"
                     value={overview.kpis.activeScreens.value}
                     total={overview.kpis.activeScreens.total}
-                    hint="pantallas"
+                    hint="avisos LED"
                     icon={MonitorPlay}
                     meter={(overview.kpis.activeScreens.value / (overview.kpis.activeScreens.total || 1)) * 100}
-                />
-                <StatCard
-                    label="Negocios conectados"
-                    value={overview.kpis.businesses.value}
-                    total={overview.kpis.businesses.total}
-                    hint="negocios"
-                    icon={Building2}
-                    delay={80}
                 />
                 <StatCard
                     label="Campañas en curso"
@@ -261,7 +252,7 @@ export default function Dashboard({ overview, screenPreview, previewDevices }: {
                                 <p className="metric text-3xl font-semibold text-fg">
                                     {formatNumber(overview.deviceHealth.total)}
                                 </p>
-                                <p className="text-[11px] text-muted">Pantallas</p>
+                                <p className="text-[11px] text-muted">Avisos LED</p>
                             </div>
                         </div>
 
@@ -300,7 +291,7 @@ export default function Dashboard({ overview, screenPreview, previewDevices }: {
                         <div>
                             <CardTitle>Distribución de la red</CardTitle>
                             <p className="mt-0.5 text-xs text-muted">
-                                {overview.cities.length} ciudades con pantallas activas
+                                {overview.cities.length} ciudades con avisos LED activos
                             </p>
                         </div>
                         <span className="rounded-full border border-line px-3 py-1 text-[11px] text-muted">
@@ -309,7 +300,7 @@ export default function Dashboard({ overview, screenPreview, previewDevices }: {
                     </CardHeader>
                     <CardContent className="space-y-3">
                         {overview.cities.length === 0 ? (
-                            <EmptyState icon={Building2} title="Sin ciudades registradas" />
+                            <EmptyState icon={MapPin} title="Sin ciudades registradas" />
                         ) : (
                             overview.cities.map((city) => {
                                 const max = Math.max(...overview.cities.map((c) => c.screens), 1);
@@ -336,21 +327,21 @@ export default function Dashboard({ overview, screenPreview, previewDevices }: {
                 <Card className="xl:col-span-5">
                     <CardHeader>
                         <div>
-                            <CardTitle>Vista previa de pantalla</CardTitle>
+                            <CardTitle>Vista previa de aviso LED</CardTitle>
                             <p className="mt-0.5 text-xs text-muted">
-                                {screenPreview?.playback ? 'Último estado recibido de la TV'
-                                    : screenPreview ? 'Muestra del contenido y diseño confirmados por la TV'
-                                    : 'Selecciona una pantalla para consultar su estado'}
+                                {screenPreview?.playback ? 'Último estado recibido del reproductor'
+                                    : screenPreview ? 'Muestra del contenido confirmado por el reproductor'
+                                    : 'Selecciona un aviso LED para consultar su estado'}
                             </p>
                         </div>
                         <span className="text-xs text-muted">
-                            {screenPreview?.playback ? 'Reporte de la TV'
-                                : screenPreview ? 'Vista aproximada' : 'Sin pantalla'}
+                            {screenPreview?.playback ? 'Reporte del reproductor'
+                                : screenPreview ? 'Vista aproximada' : 'Sin aviso LED'}
                         </span>
                     </CardHeader>
                     <CardContent>
                         <label className="mb-3 block text-xs text-muted">
-                            Pantalla
+                            Aviso LED
                             <select className="mt-1 w-full rounded-control border border-line bg-surface p-2 text-fg"
                                 value={screenPreview?.device.id ?? ''}
                                 onChange={event => router.get('/admin/dashboard', {
@@ -383,7 +374,7 @@ export default function Dashboard({ overview, screenPreview, previewDevices }: {
                                         <th className="px-5 py-2.5 text-left font-semibold">Campaña</th>
                                         <th className="px-3 py-2.5 text-left font-semibold">Anunciante</th>
                                         <th className="px-3 py-2.5 text-left font-semibold">Estado</th>
-                                        <th className="px-3 py-2.5 text-right font-semibold">Pantallas</th>
+                                        <th className="px-3 py-2.5 text-right font-semibold">Avisos LED</th>
                                         <th className="px-3 py-2.5 text-right font-semibold">Reproducciones</th>
                                         <th className="px-5 py-2.5 text-right font-semibold">Finalización</th>
                                     </tr>

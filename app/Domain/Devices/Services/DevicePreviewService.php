@@ -18,7 +18,7 @@ class DevicePreviewService
 
     public function forDevice(Device $device): array
     {
-        $device->loadMissing(['business', 'location', 'currentLayout', 'currentPlaylist']);
+        $device->loadMissing(['business', 'location', 'cities', 'currentLayout', 'currentPlaylist']);
         $manifest = $device->current_manifest_version === null ? null
             : $device->manifests()->where('version', $device->current_manifest_version)->first();
         $payload = $manifest?->payload ?? [];

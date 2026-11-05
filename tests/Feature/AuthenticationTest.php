@@ -2,14 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Businesses\Models\Business;
 use App\Domain\Users\Enums\UserStatus;
+use App\Domain\Users\Models\Permission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\CreatesUsers;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
 {
-    use RefreshDatabase;
+    use CreatesUsers, RefreshDatabase;
 
     public function test_login_screen_can_be_rendered(): void
     {
@@ -34,7 +37,7 @@ class AuthenticationTest extends TestCase
 
     public function test_users_can_authenticate_with_valid_credentials(): void
     {
-        $user = User::factory()->create(['password' => 'password']);
+        $user = $this->superAdmin(['password' => 'password']);
 
         $response = $this->post('/login', [
             'email' => $user->email,
@@ -43,6 +46,15 @@ class AuthenticationTest extends TestCase
 
         $this->assertAuthenticatedAs($user);
         $response->assertRedirect(route('dashboard'));
+    }
+
+    public function test_retired_business_management_permission_does_not_grant_dashboard_access(): void
+    {
+        $user = $this->businessUser(Business::factory()->create(), ['password' => 'password']);
+        $user->roles()->firstOrFail()->permissions()->attach(Permission::query()->where('name', 'businesses.view')->value('id'));
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])->assertSessionHasErrors('email');
+        $this->assertGuest();
     }
 
     public function test_users_cannot_authenticate_with_invalid_password(): void

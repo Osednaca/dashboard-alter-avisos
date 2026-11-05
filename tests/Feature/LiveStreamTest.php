@@ -176,7 +176,7 @@ class LiveStreamTest extends TestCase
             'starts_at' => today()->toDateString(), 'ends_at' => today()->addWeek()->toDateString(), 'priority' => 5,
             'creatives' => [['media_asset_id' => $live->id, 'duration' => 10, 'weight' => 10, 'configuration' => $config]],
             'targets' => [['target_type' => 'city', 'target_value' => 'Bogotá']]];
-        foreach ([['ends_at' => now()->subHour()->toIso8601String()], ['size_acknowledged' => false], ['fallback_media_id' => $live->id], ['display_mode' => 'anything']] as $patch) {
+        foreach ([['ends_at' => now()->subHour()->toIso8601String()], ['size_acknowledged' => false], ['fallback_media_id' => $live->id], ['display_mode' => 'anything'], ['display_mode' => 'advertising_zone'], ['display_mode' => 'business_zone']] as $patch) {
             $bad = $body;
             $bad['creatives'][0]['configuration'] = [...$config, ...$patch];
             $this->postJson('/admin/campaigns', $bad)->assertUnprocessable();

@@ -40,7 +40,7 @@ class CampaignTargetValidationTest extends TestCase
         ];
     }
 
-    public function test_edit_form_round_trips_every_target_type_and_preserves_exclusions(): void
+    public function test_edit_form_hides_legacy_target_types_and_preserves_them_on_save(): void
     {
         $campaign = $this->campaign();
         $campaign->targets()->delete();
@@ -65,7 +65,8 @@ class CampaignTargetValidationTest extends TestCase
         $expected = collect($expected)->sortBy('target_type')->values()->all();
         $this->actingAs($this->superAdmin());
         $targets = $this->get("/admin/campaigns/{$campaign->id}/edit")->assertOk()->inertiaProps('campaign.targets');
-        $this->assertSame($expected, collect($targets)->sortBy('target_type')->values()->all());
+        $visible = collect($expected)->filter(fn ($target) => in_array($target['target_type'], ['city', 'device'], true))->values()->all();
+        $this->assertSame($visible, collect($targets)->sortBy('target_type')->values()->all());
         $this->put("/admin/campaigns/{$campaign->id}", [...$this->payload($campaign), 'targets' => $targets])
             ->assertRedirect()->assertSessionHasNoErrors();
         $saved = $campaign->targets()->orderBy('id')->get()->map(fn ($target) => [
@@ -74,7 +75,7 @@ class CampaignTargetValidationTest extends TestCase
         ])->sortBy('target_type')->values()->all();
         $this->assertSame($expected, $saved);
         $this->get("/admin/campaigns/{$campaign->id}")->assertInertia(fn ($page) => $page
-            ->where('targets.0.target_type.value', 'business')->where('targets.0.target_type.label', 'Negocio'));
+            ->where('hasLegacyTargets', true)->where('targets.0.target_type.value', 'city'));
     }
 
     public function test_an_edited_campaign_can_be_published_using_the_form_target_payload(): void
@@ -126,9 +127,10 @@ class CampaignTargetValidationTest extends TestCase
     public function test_valid_target_types_still_require_their_id_or_value(): void
     {
         $campaign = $this->campaign();
-        $targets = array_map(fn ($type) => ['target_type' => $type->value], CampaignTargetType::cases());
+        $types = [CampaignTargetType::City, CampaignTargetType::Device];
+        $targets = array_map(fn ($type) => ['target_type' => $type->value], $types);
         $errors = [];
-        foreach (CampaignTargetType::cases() as $index => $type) {
+        foreach ($types as $index => $type) {
             $errors[] = "targets.{$index}.".($type->isEntity() ? 'target_id' : 'target_value');
         }
         $this->actingAs($this->superAdmin())->postJson('/admin/campaigns', [...$this->payload($campaign), 'targets' => $targets])

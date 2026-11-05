@@ -42,6 +42,7 @@ export default function CampaignShow({
     campaign,
     creatives,
     targets,
+    hasLegacyTargets,
     targetSummary,
     targetDevices,
     analytics,
@@ -49,15 +50,15 @@ export default function CampaignShow({
     campaign: CampaignEntity;
     creatives: CreativeRow[];
     targets: TargetRow[];
-    targetSummary: { screens: number; businesses: number; locations: number; cities: number };
+    hasLegacyTargets: boolean;
+    targetSummary: { screens: number; cities: number };
     targetDevices: DeviceEntity[];
     analytics: { series: Array<{ label: string; playbacks: number; completed: number; failures: number }>; totals: Record<string, number> };
 }) {
     const { can } = usePermissions();
 
     const deviceColumns: Array<Column<DeviceEntity>> = [
-        { key: 'name', header: 'Pantalla', cell: (row) => <Link href={`/admin/devices/${row.id}`} className="font-medium text-fg hover:text-accent">{row.name}</Link> },
-        { key: 'business', header: 'Negocio', cell: (row) => <span className="text-muted">{row.business?.name ?? '—'}</span> },
+        { key: 'name', header: 'Aviso LED', cell: (row) => <Link href={`/admin/devices/${row.id}`} className="font-medium text-fg hover:text-accent">{row.name}</Link> },
         { key: 'city', header: 'Ciudad', cell: (row) => <span className="text-muted">{row.location?.city ?? '—'}</span> },
         { key: 'status', header: 'Estado', cell: (row) => <StatusBadge value={row.status} /> },
     ];
@@ -105,7 +106,7 @@ export default function CampaignShow({
                 <Card>
                     <CardContent className="pt-4">
                         <p className="flex items-center gap-1.5 text-xs text-muted">
-                            <Target className="size-3.5 text-faint" /> Pantallas
+                            <Target className="size-3.5 text-faint" /> Avisos LED
                         </p>
                         <p className="metric mt-1 text-2xl text-fg">{campaign.target_screen_count}</p>
                     </CardContent>
@@ -175,9 +176,7 @@ export default function CampaignShow({
 
                         <div className="grid grid-cols-2 gap-2">
                             {[
-                                { label: 'Pantallas', value: targetSummary.screens },
-                                { label: 'Negocios', value: targetSummary.businesses },
-                                { label: 'Ubicaciones', value: targetSummary.locations },
+                                { label: 'Avisos LED', value: targetSummary.screens },
                                 { label: 'Ciudades', value: targetSummary.cities },
                             ].map((item) => (
                                 <div key={item.label} className="rounded-control border border-line bg-surface px-3 py-2">
@@ -189,6 +188,7 @@ export default function CampaignShow({
 
                         <div className="space-y-1.5">
                             <p className="text-xs text-muted">Reglas de segmentación</p>
+                            {hasLegacyTargets ? <p className="text-xs text-muted">Esta campaña conserva segmentación anterior.</p> : null}
                             <div className="flex flex-wrap gap-1.5">
                                 {targets.length === 0 ? (
                                     <span className="text-xs text-faint">Sin reglas</span>
@@ -196,8 +196,9 @@ export default function CampaignShow({
                                     targets.map((target) => (
                                         <Badge key={target.id} tone={target.is_exclusion ? 'danger' : 'info'}>
                                             {target.is_exclusion ? 'Excluye ' : ''}
-                                            {target.target_type.label}
-                                            {target.target_value ? `: ${target.target_value}` : ''}
+                                            {['business', 'business_category', 'location', 'state', 'country'].includes(target.target_type.value)
+                                                ? 'Segmentación anterior'
+                                                : `${target.target_type.label}${target.target_value ? `: ${target.target_value}` : ''}`}
                                         </Badge>
                                     ))
                                 )}
@@ -234,7 +235,7 @@ export default function CampaignShow({
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Pantallas objetivo</CardTitle>
+                        <CardTitle>Avisos LED objetivo</CardTitle>
                         <span className="text-xs text-muted">Muestra de {targetDevices.length}</span>
                     </CardHeader>
                     <CardContent>
@@ -242,7 +243,7 @@ export default function CampaignShow({
                             columns={deviceColumns}
                             rows={targetDevices}
                             keyExtractor={(row) => row.id}
-                            empty={<EmptyState icon={Target} title="La segmentación no coincide con pantallas" />}
+                            empty={<EmptyState icon={Target} title="La segmentación no coincide con avisos LED" />}
                         />
                     </CardContent>
                 </Card>

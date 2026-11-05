@@ -45,16 +45,23 @@ const preview = {
 };
 const render = data => renderToStaticMarkup(React.createElement(ScreenPreview, { preview: data }));
 
-test('portrait preview has upright aspect, top/bottom split, configured zone order and video', () => {
+test('portrait preview shows the legacy split without exposing previous content', () => {
     const html = render(preview);
     assert.match(html, /aspect-ratio:9 \/ 16/);
     assert.match(html, /Vertical · 90°/);
     assert.match(html, /Arriba \/ abajo/);
     assert.ok(html.indexOf('data-preview-zone="advertising"') < html.indexOf('data-preview-zone="business"'));
-    assert.match(html, /<video[^>]*src="\/confirmed.mp4"/);
+    assert.doesNotMatch(html, /<video[^>]*src="\/confirmed.mp4"/);
     assert.match(html, /<img[^>]*src="\/confirmed.jpg"/);
     assert.match(html, /no está sincronizada/);
     assert.match(html, /cambios pendientes de confirmar/);
+});
+
+test('preview shows assigned cities without exposing historical business or location names', () => {
+    const html = render({ ...preview, device: { ...preview.device, business: { name: 'Antiguo comercio' },
+        location: { name: 'Sucursal anterior', city: 'Bogotá' }, cities: [{ id: 1, name: 'Medellín' }] } });
+    assert.match(html, /Medellín/);
+    assert.doesNotMatch(html, /Antiguo comercio|Sucursal anterior/);
 });
 
 test('explicit zero and 180 remain horizontal while 270 is vertical', () => {
@@ -97,15 +104,20 @@ const report = {
 const actual = { ...preview, playback_reported: true, status: 'reported', playback: report,
     layout: { ...preview.layout, width_px: 1080, height_px: 1920 } };
 
-test('actual report uses logical dimensions, crop and current source without a video loop', () => {
+test('actual report preserves the legacy zone status without exposing its media', () => {
     const html = render(actual);
     assert.match(html, /aspect-ratio:1080 \/ 1920/);
     assert.match(html, /Estado reportado/);
     assert.match(html, /Reproduciendo/);
-    assert.match(html, /<video[^>]*object-cover/);
-    assert.doesNotMatch(html, /<video[^>]*loop|<video[^>]*autoPlay|\/confirmed.jpg/);
+    assert.doesNotMatch(html, /<video|\/confirmed.mp4|\/confirmed.jpg/);
     assert.match(html, /data-preview-zone="business"/);
     assert.doesNotMatch(html, /data-preview-zone="advertising"/);
+});
+
+test('reported advertising video uses the current source without a loop', () => {
+    const html = render({ ...actual, playback: { ...report, zones: { advertising: reportedZone } } });
+    assert.match(html, /<video[^>]*object-cover/);
+    assert.doesNotMatch(html, /<video[^>]*loop|<video[^>]*autoPlay/);
 });
 
 test('fullscreen quick play replaces normal zones and previous playlist content', () => {

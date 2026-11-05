@@ -10,7 +10,6 @@ import {
     ScrollText,
     Settings,
     Smartphone,
-    Store,
     UserCog,
     Zap,
 } from 'lucide-react';
@@ -26,16 +25,15 @@ const sections: Array<{ label: string; items: AdminItem[] }> = [
         label: 'Operación',
         items: [
             { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard, exact: true },
-            { label: 'Negocios', href: '/admin/businesses', icon: Store, permissions: ['businesses.view'] },
             { label: 'Ubicaciones', href: '/admin/locations', icon: MapPin, permissions: ['locations.view'] },
             {
-                label: 'Pantallas',
+                label: 'Avisos LED',
                 href: '/admin/devices',
                 icon: MonitorPlay,
                 exact: true,
                 permissions: ['devices.view'],
                 children: [
-                    { label: 'Todas las pantallas', href: '/admin/devices' },
+                    { label: 'Todos los avisos LED', href: '/admin/devices' },
                     { label: 'Activaciones', href: '/admin/devices/activations' },
                 ],
             },
@@ -75,15 +73,13 @@ export function AppSidebar({ collapsed, className }: { collapsed: boolean; class
 
     return (
         <SidebarShell
-            brand={{ title: 'Alter', subtitle: 'Red de pantallas', href: '/admin/dashboard' }}
+            brand={{ title: 'Alter', subtitle: 'Red de avisos LED', href: '/admin/dashboard' }}
             sections={visibleSections}
             collapsed={collapsed}
             className={className}
             footer={
                 <p className="text-[10px] font-semibold uppercase leading-relaxed tracking-[0.18em] text-faint">
-                    Negocios
-                    <br />
-                    Pantallas
+                    Avisos LED
                     <br />
                     Audiencias
                 </p>

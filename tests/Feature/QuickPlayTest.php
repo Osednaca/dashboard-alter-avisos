@@ -38,7 +38,7 @@ class QuickPlayTest extends TestCase
         $this->actingAs($this->superAdmin())
             ->post('/admin/quick-play', [
                 'media_asset_id' => $media->id,
-                'display_mode' => 'advertising',
+                'display_mode' => 'fullscreen',
                 'scope' => 'devices',
                 'duration' => 12,
                 'device_ids' => [$online->id, $online2->id],

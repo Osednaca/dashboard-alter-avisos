@@ -88,7 +88,7 @@ export default function AlertsIndex({
         <AdminLayout>
             <Head title="Alertas" />
 
-            <PageHeader title="Alertas" description="Incidentes operativos de la red de pantallas." />
+            <PageHeader title="Alertas" description="Incidentes operativos de la red de avisos LED." />
 
             <div className="mt-6 rounded-card border border-line bg-card p-4">
                 <FilterBar>

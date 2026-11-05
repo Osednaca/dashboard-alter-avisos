@@ -1,6 +1,6 @@
 import { Badge } from '@/Components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { formatBytes, formatDateTime } from '@/Utils/format';
+import { formatDateTime } from '@/Utils/format';
 
 export interface DeviceDiagnosticsData {
     current_content_type?: string;
@@ -50,8 +50,6 @@ export function DeviceDiagnostics({ diagnostics, recordedAt }: { diagnostics?: D
                         <Badge tone="danger">{diagnostics.sync_error}</Badge>
                         <p>{describeDeviceError(diagnostics.sync_error)}</p>
                     </div> : <p>Sin error de sincronización en este reporte.</p>}
-                    <p>Imágenes del negocio disponibles sin Internet: <strong>{diagnostics.business_images_downloaded ?? '—'} de {diagnostics.business_images_expected ?? '—'}</strong></p>
-                    <p>Espacio ocupado: {formatBytes(diagnostics.business_images_bytes ?? null)}</p>
                     {diagnostics.media_directory && <p className="break-all text-muted">Carpeta privada del TV: {diagnostics.media_directory}</p>}
                     <p className="text-muted">Los originales se conservan en el panel. La reproducción usa las copias descargadas y verificadas en el TV.</p>
                 </>}

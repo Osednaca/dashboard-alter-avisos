@@ -21,7 +21,7 @@ class ManifestController extends Controller
             $builder->handle($device);
             $device->refresh();
         }
-        if ($builder->rebuildIfLiveEmbedsAreNoncanonical($device)) {
+        if ($builder->rebuildIfSnapshotIsOutdated($device)) {
             $device->refresh();
         }
 

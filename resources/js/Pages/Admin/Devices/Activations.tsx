@@ -23,8 +23,8 @@ interface ActivationEntity {
     status: EnumValue;
     device_uuid: string | null;
     device_name: string | null;
-    business: { id: number; name: string } | null;
-    location: { id: number; name: string } | null;
+    assigned: boolean;
+    city: { id: number; name: string } | null;
     app_version: string | null;
     ip_address: string | null;
     expires_at: string | null;
@@ -32,28 +32,19 @@ interface ActivationEntity {
     created_at: string | null;
 }
 
-interface BusinessWithLocations {
-    id: number;
-    name: string;
-    locations: Array<{ id: number; name: string }>;
-}
-
-export default function Activations({ activations, businesses }: { activations: ActivationEntity[]; businesses: BusinessWithLocations[] }) {
+export default function Activations({ activations, cities }: { activations: ActivationEntity[]; cities: Array<{ id: number; name: string; state: string }> }) {
     const [selected, setSelected] = useState<ActivationEntity | null>(null);
 
-    const form = useForm({ business_id: '', location_id: '', device_name: '' });
+    const form = useForm({ city_id: '', device_name: '' });
 
     const openAssign = (activation: ActivationEntity) => {
         form.setData({
-            business_id: activation.business ? String(activation.business.id) : '',
-            location_id: activation.location ? String(activation.location.id) : '',
+            city_id: activation.city ? String(activation.city.id) : '',
             device_name: activation.device_name ?? '',
         });
         form.clearErrors();
         setSelected(activation);
     };
-
-    const locations = businesses.find((business) => String(business.id) === form.data.business_id)?.locations ?? [];
 
     const columns: Array<Column<ActivationEntity>> = [
         {
@@ -70,11 +61,8 @@ export default function Activations({ activations, businesses }: { activations: 
             key: 'business',
             header: 'Asignación',
             cell: (row) =>
-                row.business ? (
-                    <span className="text-muted">
-                        {row.business.name}
-                        {row.location ? <span className="text-faint"> · {row.location.name}</span> : null}
-                    </span>
+                row.assigned ? (
+                    <span className="text-muted">{row.city?.name ?? 'Asignado'}</span>
                 ) : (
                     <span className="text-faint">Sin asignar</span>
                 ),
@@ -90,7 +78,7 @@ export default function Activations({ activations, businesses }: { activations: 
                 <div className="flex justify-end">
                     <ActionMenu
                         items={[
-                            { label: 'Asignar a negocio', icon: MapPin, onSelect: () => openAssign(row), hidden: row.status.value === 'claimed' },
+                            { label: 'Asignar aviso', icon: MapPin, onSelect: () => openAssign(row), hidden: row.status.value === 'claimed' },
                             {
                                 label: 'Revocar código',
                                 icon: Trash2,
@@ -115,11 +103,11 @@ export default function Activations({ activations, businesses }: { activations: 
             <Head title="Activaciones" />
 
             <PageHeader
-                title="Activaciones de pantallas"
+                title="Activaciones de avisos LED"
                 description="Códigos generados por las apps Android TV pendientes de asignación."
                 actions={
                     <Button variant="secondary" size="sm" asChild>
-                        <a href="/admin/devices">Ver pantallas</a>
+                        <a href="/admin/devices">Ver avisos LED</a>
                     </Button>
                 }
             />
@@ -127,7 +115,7 @@ export default function Activations({ activations, businesses }: { activations: 
             <div className="mt-4 rounded-card border border-line bg-surface p-4 text-xs text-muted">
                 <p className="flex items-center gap-2">
                     <KeyRound className="size-3.5 text-accent" />
-                    Flujo: la app solicita un código → el administrador lo asigna a un negocio y ubicación → la pantalla
+                    Flujo: la app solicita un código → el administrador lo asigna a una ciudad opcional → el aviso LED
                     confirma y recibe su token.
                 </p>
             </div>
@@ -138,7 +126,7 @@ export default function Activations({ activations, businesses }: { activations: 
                         columns={columns}
                         rows={activations}
                         keyExtractor={(row) => row.id}
-                        empty={<EmptyState icon={KeyRound} title="Sin solicitudes de activación" description="Las nuevas pantallas aparecerán aquí al conectarse." />}
+                        empty={<EmptyState icon={KeyRound} title="Sin solicitudes de activación" description="Los nuevos avisos LED aparecerán aquí al conectarse." />}
                     />
                 </CardContent>
             </Card>
@@ -149,43 +137,16 @@ export default function Activations({ activations, businesses }: { activations: 
                         <DialogTitle>Asignar código {selected?.code}</DialogTitle>
                     </DialogHeader>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <FormField label="Negocio" error={form.errors.business_id} className="sm:col-span-2">
-                            <Select
-                                value={form.data.business_id || undefined}
-                                onValueChange={(value) => form.setData({ ...form.data, business_id: value, location_id: '' })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Selecciona un negocio" />
-                                </SelectTrigger>
+                        <FormField label="Ciudad (opcional)" error={form.errors.city_id}>
+                            <Select value={form.data.city_id || undefined} onValueChange={(value) => form.setData('city_id', value)} disabled={!cities.length}>
+                                <SelectTrigger><SelectValue placeholder="Selecciona ciudad" /></SelectTrigger>
                                 <SelectContent>
-                                    {businesses.map((business) => (
-                                        <SelectItem key={business.id} value={String(business.id)}>
-                                            {business.name}
-                                        </SelectItem>
-                                    ))}
+                                    {cities.map((city) => <SelectItem key={city.id} value={String(city.id)}>{city.name}{city.state ? ` · ${city.state}` : ''}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </FormField>
-                        <FormField label="Ubicación" error={form.errors.location_id}>
-                            <Select
-                                value={form.data.location_id || undefined}
-                                onValueChange={(value) => form.setData('location_id', value)}
-                                disabled={!locations.length}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Selecciona ubicación" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {locations.map((location) => (
-                                        <SelectItem key={location.id} value={String(location.id)}>
-                                            {location.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </FormField>
-                        <FormField label="Nombre de la pantalla" error={form.errors.device_name}>
-                            <Input value={form.data.device_name} onChange={(e) => form.setData('device_name', e.target.value)} placeholder="Pantalla principal" />
+                        <FormField label="Nombre del aviso LED" error={form.errors.device_name}>
+                            <Input value={form.data.device_name} onChange={(e) => form.setData('device_name', e.target.value)} placeholder="Aviso LED principal" />
                         </FormField>
                     </div>
                     <DialogFooter>

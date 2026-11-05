@@ -22,6 +22,7 @@ export interface CreativeInput {
 
 export interface FormCampaign extends Omit<CampaignEntity, 'creatives_count'> {
     creatives?: Array<{ media_asset_id: number; duration: number; weight: number; configuration?: LiveConfiguration | null }>;
+    has_legacy_targets?: boolean;
     targets?: Array<{ target_type: string; target_id: number | null; target_value: string | null; is_exclusion: boolean }>;
 }
 
@@ -40,9 +41,13 @@ export function initialCampaignValues(campaign: FormCampaign | null, selectedMed
         impressions_goal: campaign?.impressions_goal ?? null,
         budget: campaign?.budget ?? '',
         publish: false,
-        creatives: campaign ? (campaign.creatives ?? []).map((creative) => ({ ...creative })) as CreativeInput[]
-            : selectedMedia.map((media) => ({ media_asset_id: media.id, duration: Math.min(86400, Math.max(3, Math.round(media.duration ?? 10))), weight: 10 })) as CreativeInput[],
-        targets: (campaign?.targets ?? []).map((target) => ({
+        creatives: campaign ? (campaign.creatives ?? []).map((creative) => ({ ...creative,
+            ...(creative.configuration ? { configuration: { ...creative.configuration, display_mode: 'fullscreen' } } : {}),
+        })) as CreativeInput[]
+            : selectedMedia.map((media) => ({ media_asset_id: media.id, duration: Math.min(86400, Math.max(3, Math.round(media.duration ?? 10))), weight: 10,
+                ...(media.type?.value === 'live_stream' ? { configuration: { display_mode: 'fullscreen', audio: false, starts_at: '', ends_at: '', fallback_media_id: null, size_acknowledged: false } } : {}),
+            })) as CreativeInput[],
+        targets: (campaign?.targets ?? []).filter((target) => !['business', 'business_category', 'location', 'state', 'country'].includes(target.target_type)).map((target) => ({
             target_type: target.target_type,
             target_id: target.target_id ?? '',
             target_value: target.target_value ?? '',

@@ -49,6 +49,12 @@ class CommandController extends Controller
     {
         $payload = $command->payload;
 
+        if ($command->command === DeviceCommandType::QuickPlay && is_array($payload)) {
+            // Pending commands created before the upgrade must not restore a
+            // partial-zone playback when offered to a device.
+            $payload['display_mode'] = 'fullscreen';
+        }
+
         if ($command->command === DeviceCommandType::QuickPlay && is_string($payload['expires_at'] ?? null)) {
             try {
                 // Also normalize commands queued before the UTC-Z compatibility fix.

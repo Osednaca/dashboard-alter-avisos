@@ -54,17 +54,14 @@ class MediaLibraryIsolationTest extends TestCase
         Queue::assertPushed(ProcessMediaAsset::class, 2);
     }
 
-    public function test_business_uploads_keep_ownership_and_stay_out_of_admin_library(): void
+    public function test_removed_business_upload_endpoint_cannot_create_assets(): void
     {
         Queue::fake();
         Storage::fake('public');
-        config(['signage.media_disk' => 'public']);
         $business = Business::factory()->create();
-        $this->actingAs($this->businessUser($business));
-        foreach (['one.jpg', 'two.jpg'] as $name) {
-            $this->postJson('/business/library', ['file' => UploadedFile::fake()->image($name), 'business_id' => 999])->assertCreated();
-        }
-        $this->assertSame(2, MediaAsset::where('owner_id', $business->id)->where('owner_type', $business->getMorphClass())->count());
-        $this->actingAs($this->superAdmin())->get('/admin/creatives')->assertInertia(fn ($page) => $page->has('assets.data', 0));
+        $this->actingAs($this->businessUser($business))
+            ->postJson('/business/library', ['file' => UploadedFile::fake()->image('private.jpg')])->assertNotFound();
+        $this->assertDatabaseCount('media_assets', 0);
+        Queue::assertNothingPushed();
     }
 }

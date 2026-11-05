@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Domain\Advertisers\Models\Advertiser;
-use App\Domain\Businesses\Models\Business;
 use App\Domain\Campaigns\Models\Campaign;
 use App\Domain\Devices\Models\Device;
-use App\Domain\Locations\Models\Location;
+use App\Domain\Locations\Models\City;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -27,19 +26,12 @@ class SearchController extends Controller
         $like = '%'.$term.'%';
         $groups = [];
 
-        if ($user->hasPermission('businesses.view')) {
-            $groups[] = $this->group('Negocios', 'business', Business::query()
-                ->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('contact_name', 'like', $like))
-                ->limit(5)->get()
-                ->map(fn (Business $b) => ['id' => $b->id, 'title' => $b->name, 'subtitle' => $b->category?->label(), 'href' => "/admin/businesses/{$b->id}"]));
-        }
-
         if ($user->hasPermission('devices.view')) {
-            $groups[] = $this->group('Pantallas', 'device', Device::query()
-                ->with('business:id,name')
+            $groups[] = $this->group('Avisos LED', 'device', Device::query()
+                ->with('cities:id,name')
                 ->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('uuid', 'like', $like)->orWhere('activation_code', 'like', $like))
                 ->limit(5)->get()
-                ->map(fn (Device $d) => ['id' => $d->id, 'title' => $d->name, 'subtitle' => $d->business?->name, 'href' => "/admin/devices/{$d->id}"]));
+                ->map(fn (Device $d) => ['id' => $d->id, 'title' => $d->name, 'subtitle' => $d->cities->pluck('name')->join(', '), 'href' => "/admin/devices/{$d->id}"]));
         }
 
         if ($user->hasPermission('campaigns.view')) {
@@ -58,11 +50,10 @@ class SearchController extends Controller
         }
 
         if ($user->hasPermission('locations.view')) {
-            $groups[] = $this->group('Ubicaciones', 'location', Location::query()
-                ->with('business:id,name')
-                ->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('city', 'like', $like))
+            $groups[] = $this->group('Ciudades', 'location', City::query()
+                ->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('state', 'like', $like))
                 ->limit(5)->get()
-                ->map(fn (Location $l) => ['id' => $l->id, 'title' => $l->name, 'subtitle' => $l->city, 'href' => "/admin/locations/{$l->id}"]));
+                ->map(fn (City $city) => ['id' => $city->id, 'title' => $city->name, 'subtitle' => $city->state, 'href' => "/admin/locations/{$city->id}"]));
         }
 
         if ($user->hasPermission('users.manage')) {

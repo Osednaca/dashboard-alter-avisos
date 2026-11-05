@@ -44,11 +44,10 @@ class StartQuickPlay
         if ($media->type === MediaType::LiveStream) {
             throw ValidationException::withMessages(['media_asset_id' => 'Programa el directo desde una campaña.']);
         }
-        if ($business !== null && $displayMode !== QuickPlayDisplayMode::Business) {
-            throw ValidationException::withMessages(['display_mode' => 'El Instant Play del negocio solo puede reproducirse en la zona del negocio.']);
-        }
+        // Normalize internal callers and retries of old zone-specific plays too.
+        $displayMode = QuickPlayDisplayMode::Fullscreen;
         if ($business !== null && $scope !== QuickPlayScope::Devices) {
-            throw ValidationException::withMessages(['scope' => 'Selecciona las pantallas de tu negocio.']);
+            throw ValidationException::withMessages(['scope' => 'Selecciona los avisos LED.']);
         }
         if ($media->processing_status !== ProcessingStatus::Ready || ($business !== null &&
             ($media->owner_type !== $business->getMorphClass() || (int) $media->owner_id !== $business->id))) {
@@ -58,7 +57,7 @@ class StartQuickPlay
 
         if ($devices->isEmpty()) {
             throw ValidationException::withMessages([
-                'targets' => 'La selección no coincide con ninguna pantalla activa.',
+                'targets' => 'La selección no coincide con ningún aviso LED activo.',
             ]);
         }
 
@@ -94,7 +93,7 @@ class StartQuickPlay
                 if (! $device->isReachable()) {
                     $row->forceFill([
                         'status' => QuickPlayDeviceStatus::Failed,
-                        'error' => 'La pantalla está desconectada; el contenido no pudo entregarse.',
+                        'error' => 'El aviso LED está desconectado; el contenido no pudo entregarse.',
                         'completed_at' => now(),
                     ])->save();
 

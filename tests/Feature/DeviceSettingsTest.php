@@ -20,7 +20,7 @@ class DeviceSettingsTest extends TestCase
 
     private const ENDPOINT = '/api/v1/device/admin/settings';
 
-    public function test_missing_audio_defaults_to_advertising_and_explicit_modes_are_preserved(): void
+    public function test_audio_uses_advertising_unless_muted_without_modifying_stored_layout(): void
     {
         foreach ([null, 'none', 'business', 'advertising'] as $mode) {
             $configuration = $mode === null ? [] : ['audio_mode' => $mode];
@@ -30,7 +30,7 @@ class DeviceSettingsTest extends TestCase
             ]);
             $device = Device::factory()->create(['current_layout_id' => $layout->id]);
             $manifest = app(BuildDeviceManifest::class)->handle($device);
-            $this->assertSame($mode ?? 'advertising', $manifest->payload['layout']['configuration']['audio_mode']);
+            $this->assertSame($mode === 'none' ? 'none' : 'advertising', $manifest->payload['layout']['configuration']['audio_mode']);
             $this->assertSame($configuration, $layout->fresh()->configuration);
         }
     }
@@ -57,8 +57,8 @@ class DeviceSettingsTest extends TestCase
         $settings = ['split' => 'top_bottom', 'business_percentage' => 60, 'orientation' => 'portrait', 'audio_mode' => 'advertising'];
         $response = $this->withToken($device->issueToken())->patchJson(self::ENDPOINT, ['pin' => '012345', 'settings' => $settings])
             ->assertOk()->assertJsonPath('manifest.payload.device.uuid', $device->uuid)
-            ->assertJsonPath('manifest.payload.layout.business_percentage', 60)
-            ->assertJsonPath('manifest.payload.layout.advertising_percentage', 40)
+            ->assertJsonPath('manifest.payload.layout.business_percentage', 0)
+            ->assertJsonPath('manifest.payload.layout.advertising_percentage', 100)
             ->assertJsonPath('manifest.payload.layout.orientation', 'portrait')
             ->assertJsonPath('manifest.payload.layout.configuration.split', 'top_bottom')
             ->assertJsonPath('manifest.payload.layout.configuration.business_area', 'bottom')
@@ -88,7 +88,8 @@ class DeviceSettingsTest extends TestCase
         $this->assertGreaterThan((int) $a->json('manifest.version'), (int) $b->json('manifest.version'));
         $c = app(BuildDeviceManifest::class)->handle($device->fresh());
         $this->assertGreaterThan((int) $b->json('manifest.version'), (int) $c->version);
-        $this->assertSame(75, $c->payload['layout']['business_percentage']);
+        $this->assertSame(0, $c->payload['layout']['business_percentage']);
+        $this->assertSame(100, $c->payload['layout']['advertising_percentage']);
         $this->assertSame('top_bottom', $c->payload['layout']['configuration']['split']);
     }
 
@@ -113,7 +114,7 @@ class DeviceSettingsTest extends TestCase
     {
         $device = $this->device();
         $this->withToken($device->issueToken());
-        foreach ([[], ['business_percentage' => 0], ['business_percentage' => 100], ['orientation' => 'invalid'], ['split' => null], ['audio_mode' => 'both'], ['rotation' => 45], ['rotation' => 360], ['transition' => 'invalid'], ['current_layout_id' => 1]] as $settings) {
+        foreach ([[], ['business_percentage' => 100], ['orientation' => 'invalid'], ['split' => null], ['audio_mode' => 'both'], ['rotation' => 45], ['rotation' => 360], ['transition' => 'invalid'], ['current_layout_id' => 1]] as $settings) {
             $this->patchJson(self::ENDPOINT, ['pin' => '012345', 'settings' => $settings])->assertUnprocessable();
         }
         GlobalScreenPin::query()->delete();

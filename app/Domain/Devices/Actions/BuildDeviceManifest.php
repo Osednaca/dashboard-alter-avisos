@@ -11,7 +11,6 @@ use App\Domain\Devices\Models\DeviceManifest;
 use App\Domain\Media\Models\Layout;
 use App\Domain\Media\Models\MediaAsset;
 use App\Domain\Media\Services\LiveSourcePayload;
-use App\Domain\Playlists\Models\Playlist;
 use App\Domain\Scheduling\Services\ResolveActivePlaylist;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -29,9 +28,8 @@ class BuildDeviceManifest
      * so the player only downloads what changed, and the previous manifest stays
      * active until the new one is fully downloaded.
      *
-     * The business playlist is resolved from the schedules (time window,
-     * weekdays and location). All scheduled playlists are embedded so a player
-     * can also switch locally between schedule boundaries.
+     * Advertising uses the complete display while the legacy playlist keys
+     * remain present for clients that expect them.
      */
     public function handle(Device $device): DeviceManifest
     {
@@ -43,7 +41,7 @@ class BuildDeviceManifest
      * were signed for a noncanonical origin. Re-read the pointer under the device lock
      * so a good pending version is preferred over an older current version.
      */
-    public function rebuildIfLiveEmbedsAreNoncanonical(Device $device): bool
+    public function rebuildIfSnapshotIsOutdated(Device $device): bool
     {
         return DB::transaction(function () use ($device): bool {
             $locked = Device::query()->lockForUpdate()->findOrFail($device->id);
@@ -61,8 +59,20 @@ class BuildDeviceManifest
             $pointerIsInconsistent = ! $candidate || $candidate->status !== $expectedStatus;
             $originIsNoncanonical = $candidate
                 && $this->liveSourcePayload->hasNoncanonicalEmbedUrls($candidate->payload ?? []);
+            // Existing snapshots must also be replaced when this dashboard is
+            // upgraded from a two-zone installation.
+            $layoutIsSplit = $candidate && (
+                data_get($candidate->payload, 'layout.business_percentage') !== 0
+                || data_get($candidate->payload, 'layout.advertising_percentage') !== 100
+                || data_get($candidate->payload, 'business_playlist') !== null
+                || ! empty($candidate->payload['scheduled_playlists'])
+                || collect(data_get($candidate->payload, 'advertising_playlist.campaigns', []))
+                    ->flatMap(fn ($campaign) => $campaign['creatives'] ?? [])
+                    ->contains(fn ($creative) => isset($creative['live_configuration'])
+                        && ($creative['live_configuration']['display_mode'] ?? null) !== 'fullscreen')
+            );
 
-            if (! $pointerIsInconsistent && ! $originIsNoncanonical) {
+            if (! $pointerIsInconsistent && ! $originIsNoncanonical && ! $layoutIsSplit) {
                 return false;
             }
 
@@ -80,15 +90,9 @@ class BuildDeviceManifest
             ?? Layout::query()->where('is_default', true)->first()
             ?? Layout::query()->first();
 
-        $activePlaylist = $this->activePlaylist->forDevice($device);
-        $scheduledPlaylists = $this->activePlaylist->scheduledPlaylists($device);
-        $schedules = $this->activePlaylist->activeSchedules($device);
-
         $campaigns = $this->activeCampaigns($device);
 
         $assets = collect()
-            ->merge($activePlaylist?->items->pluck('mediaAsset') ?? collect())
-            ->merge(collect($scheduledPlaylists)->flatMap(fn (Playlist $playlist) => $playlist->items->pluck('mediaAsset')))
             ->merge($campaigns->flatMap(fn (Campaign $c) => $c->creatives->pluck('mediaAsset')))
             ->merge(MediaAsset::query()->whereIn('id', $campaigns->flatMap(fn ($c) => $c->creatives->map(fn ($creative) => $creative->configuration['fallback_media_id'] ?? null))->filter())->get())
             ->filter()
@@ -108,21 +112,19 @@ class BuildDeviceManifest
                 'name' => $device->name,
                 'timezone' => $this->activePlaylist->timezoneFor($device),
             ],
-            'layout' => $layout ? [
-                'id' => $layout->id,
-                'name' => $layout->name,
-                'orientation' => $layout->orientation?->value,
-                'business_percentage' => $layout->business_percentage,
-                'advertising_percentage' => $layout->advertising_percentage,
-                'configuration' => array_replace(['audio_mode' => 'advertising'], $layout->configuration ?? []),
-            ] : null,
-            // The playlist that should be playing right now (server decision).
-            'business_playlist' => $activePlaylist ? $this->playlistPayload($activePlaylist) : null,
-            // Every playlist referenced by a schedule, so the player can switch
-            // locally at each boundary without waiting for a new manifest.
-            'scheduled_playlists' => collect($scheduledPlaylists)
-                ->map(fn (Playlist $playlist) => $this->playlistPayload($playlist))
-                ->values(),
+            'layout' => [
+                'id' => $layout?->id,
+                'name' => $layout?->name ?? 'Publicidad',
+                'orientation' => $layout?->orientation?->value ?? 'landscape',
+                'business_percentage' => 0,
+                'advertising_percentage' => 100,
+                'configuration' => array_replace($layout?->configuration ?? [], [
+                    'audio_mode' => ($layout?->configuration['audio_mode'] ?? null) === 'none' ? 'none' : 'advertising',
+                ]),
+            ],
+            // Retain the existing protocol keys without distributing business content.
+            'business_playlist' => null,
+            'scheduled_playlists' => [],
             'advertising_playlist' => [
                 'campaigns' => $campaigns->map(fn (Campaign $c) => [
                     'id' => $c->id,
@@ -138,21 +140,13 @@ class BuildDeviceManifest
                         'media_asset_id' => $creative->media_asset_id,
                         'duration' => $creative->duration,
                         'weight' => $creative->weight,
-                        'live_configuration' => $creative->configuration,
+                        'live_configuration' => $creative->configuration === null ? null
+                            : array_replace($creative->configuration, ['display_mode' => 'fullscreen']),
                     ])->values(),
                 ])->values(),
             ],
-            'schedules' => $schedules->map(fn ($schedule) => [
-                'id' => $schedule->id,
-                'name' => $schedule->name,
-                'playlist_id' => $schedule->playlist_id,
-                'location_id' => $schedule->location_id,
-                'daily_start_time' => $schedule->daily_start_time,
-                'daily_end_time' => $schedule->daily_end_time,
-                'days_of_week' => $schedule->days_of_week,
-                'priority' => $schedule->priority,
-            ])->values(),
-            'active_playlist_id' => $activePlaylist?->id,
+            'schedules' => [],
+            'active_playlist_id' => null,
             'assets' => $assets->map(fn ($asset) => [
                 'id' => $asset->id,
                 'type' => $asset->type?->value,
@@ -188,7 +182,6 @@ class BuildDeviceManifest
         $device->forceFill([
             'pending_manifest_version' => $version,
             'manifest_dirty' => false,
-            'current_playlist_id' => $activePlaylist?->id ?? $device->current_playlist_id,
         ])->save();
 
         return $manifest;
@@ -209,23 +202,5 @@ class BuildDeviceManifest
             ->filter(fn (Campaign $campaign) => $this->targets->devicesFor($campaign)->whereKey($device->id)->exists())
             ->sortByDesc('priority')
             ->values();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function playlistPayload(Playlist $playlist): array
-    {
-        return [
-            'id' => $playlist->id,
-            'name' => $playlist->name,
-            'items' => $playlist->items->map(fn ($item) => [
-                'id' => $item->id,
-                'media_asset_id' => $item->media_asset_id,
-                'order' => $item->sort_order,
-                'duration' => $item->duration,
-                'transition' => $item->transition,
-            ])->values(),
-        ];
     }
 }

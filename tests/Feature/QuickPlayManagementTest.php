@@ -8,6 +8,7 @@ use App\Domain\Devices\Enums\DeviceCommandType;
 use App\Domain\Devices\Enums\DeviceStatus;
 use App\Domain\Devices\Models\Device;
 use App\Domain\Media\Models\MediaAsset;
+use App\Domain\QuickPlay\Actions\RetryQuickPlay;
 use App\Domain\QuickPlay\Actions\StartQuickPlay;
 use App\Domain\QuickPlay\Actions\UpdateQuickPlayDeviceStatus;
 use App\Domain\QuickPlay\Enums\QuickPlayDeviceStatus;
@@ -53,6 +54,8 @@ class QuickPlayManagementTest extends TestCase
             app(UpdateQuickPlayDeviceStatus::class)->handle($row,
                 $row->device_id === $failed->id ? QuickPlayDeviceStatus::Failed : QuickPlayDeviceStatus::Completed);
         }
+        // Simulate an old partial-zone delivery; retries must upgrade it.
+        $quick->update(['display_mode' => QuickPlayDisplayMode::Advertising]);
         $oldCommand = $quick->devices()->where('device_id', $failed->id)->sole()->command_id;
         $this->travel(31)->minutes();
         $failed->forceFill(['last_seen_at' => now()])->save();
@@ -61,7 +64,8 @@ class QuickPlayManagementTest extends TestCase
         $this->assertNotSame($quick->id, $retry->id);
         $this->assertSame($quick->id, $retry->metadata['retry_of_id']);
         $this->assertSame(17, $retry->duration);
-        $this->assertSame(QuickPlayDisplayMode::Advertising, $retry->display_mode);
+        $this->assertSame(QuickPlayDisplayMode::Fullscreen, $retry->display_mode);
+        $this->assertSame('fullscreen', $retry->devices()->sole()->command->payload['display_mode']);
         $this->assertSame($media->id, $retry->media_asset_id);
         $this->assertTrue($retry->expires_at->isFuture());
         $row = $retry->devices()->sole();
@@ -134,60 +138,51 @@ class QuickPlayManagementTest extends TestCase
         $this->assertSoftDeleted('quick_plays', ['id' => $quick->id]);
     }
 
-    public function test_business_can_retry_and_delete_its_own_history_with_ownership_preserved(): void
-    {
-        $business = Business::factory()->create();
-        [$quick, $device, , $user] = $this->delivery($business);
-        $this->markFailed($quick);
-        $this->actingAs($user)->post('/business/quick-play/'.$quick->id.'/retry')->assertSessionHasNoErrors();
-        $retry = QuickPlay::query()->latest('id')->firstOrFail();
-        $this->assertSame($business->id, $retry->business_id);
-        $this->assertSame($device->id, $retry->devices()->sole()->device_id);
-        $this->delete('/business/quick-play/'.$retry->id)->assertRedirect('/business/quick-play');
-        $this->assertSoftDeleted('quick_plays', ['id' => $retry->id]);
-        $this->assertNotNull($quick->fresh());
-    }
-
-    public function test_business_cannot_retry_or_delete_another_business_even_with_membership_in_both(): void
-    {
-        $business = Business::factory()->create();
-        [$quick, , , $user] = $this->delivery($business);
-        $this->markFailed($quick);
-        $other = Business::factory()->create();
-        $other->users()->attach($user, ['role' => 'owner', 'is_primary' => false]);
-        $this->actingAs($user)->withSession(['business_id' => $other->id]);
-        $this->post('/business/quick-play/'.$quick->id.'/retry')->assertNotFound();
-        $this->delete('/business/quick-play/'.$quick->id)->assertNotFound();
-        $this->assertDatabaseCount('quick_plays', 1);
-        $this->assertNotNull($quick->fresh());
-    }
-
-    public function test_business_cannot_retry_legacy_advertising_or_fullscreen_deliveries(): void
+    public function test_removed_business_quick_play_routes_cannot_read_or_modify_old_deliveries(): void
     {
         [$quick, , , $user] = $this->delivery(Business::factory()->create());
         $this->markFailed($quick);
-        $this->actingAs($user);
-        foreach ([QuickPlayDisplayMode::Advertising, QuickPlayDisplayMode::Fullscreen] as $mode) {
-            $quick->update(['display_mode' => $mode]);
-            $this->get('/business/quick-play/'.$quick->id)->assertInertia(fn ($page) => $page->where('quickPlay.can_retry', false));
-            $this->post('/business/quick-play/'.$quick->id.'/retry')->assertSessionHasErrors('quick_play');
+        foreach ([$user, $this->superAdmin()] as $actor) {
+            $this->actingAs($actor);
+            $this->getJson('/business/quick-play')->assertNotFound();
+            $this->getJson('/business/quick-play/create')->assertNotFound();
+            $this->postJson('/business/quick-play', [])->assertNotFound();
+            $this->getJson('/business/quick-play/'.$quick->id)->assertNotFound();
+            $this->postJson('/business/quick-play/'.$quick->id.'/retry')->assertNotFound();
+            $this->deleteJson('/business/quick-play/'.$quick->id)->assertNotFound();
         }
         $this->assertDatabaseCount('quick_plays', 1);
         $this->assertDatabaseCount('device_commands', 1);
+        $this->assertNotNull($quick->fresh());
     }
 
-    public function test_business_dispatch_rejects_forbidden_modes_and_scopes_outside_the_form(): void
+    public function test_admin_cannot_read_retry_or_delete_historical_private_deliveries(): void
+    {
+        [$quick] = $this->delivery(Business::factory()->create());
+        $this->markFailed($quick);
+        $this->actingAs($this->superAdmin());
+        $this->getJson('/admin/quick-play/'.$quick->id)->assertNotFound();
+        $this->postJson('/admin/quick-play/'.$quick->id.'/retry')->assertNotFound();
+        $this->deleteJson('/admin/quick-play/'.$quick->id)->assertNotFound();
+        $this->assertDatabaseCount('quick_plays', 1);
+        $this->assertDatabaseCount('device_commands', 1);
+        $this->assertNotNull($quick->fresh());
+    }
+
+    public function test_legacy_business_dispatch_rejects_unscoped_targets_and_other_business_media(): void
     {
         $business = Business::factory()->create();
         [$quick, $device, $media, $user] = $this->delivery($business);
+        $foreign = MediaAsset::factory()->image()->create([
+            'owner_type' => $business->getMorphClass(), 'owner_id' => Business::factory()->create()->id,
+        ]);
         foreach ([
-            [QuickPlayDisplayMode::Advertising, QuickPlayScope::Devices, 'display_mode'],
-            [QuickPlayDisplayMode::Fullscreen, QuickPlayScope::Devices, 'display_mode'],
-            [QuickPlayDisplayMode::Business, QuickPlayScope::All, 'scope'],
-        ] as [$mode, $scope, $error]) {
+            [$media, QuickPlayScope::All, 'scope'],
+            [$foreign, QuickPlayScope::Devices, 'media_asset_id'],
+        ] as [$asset, $scope, $error]) {
             try {
-                app(StartQuickPlay::class)->handle($user, $media, $mode, $scope, 10, ['device_ids' => [$device->id]], $business);
-                $this->fail('Business dispatch must reject forbidden modes and scopes.');
+                app(StartQuickPlay::class)->handle($user, $asset, QuickPlayDisplayMode::Fullscreen, $scope, 10, ['device_ids' => [$device->id]], $business);
+                $this->fail('Legacy dispatch must enforce scoped targets and ownership.');
             } catch (ValidationException $exception) {
                 $this->assertArrayHasKey($error, $exception->errors());
             }
@@ -196,16 +191,24 @@ class QuickPlayManagementTest extends TestCase
         $this->assertDatabaseCount('device_commands', 1);
     }
 
-    public function test_retry_never_follows_a_device_transferred_out_of_the_business(): void
+    public function test_legacy_retry_never_follows_a_device_transferred_out_of_the_business(): void
     {
         [$quick, $device, , $user] = $this->delivery(Business::factory()->create());
         $this->markFailed($quick);
+        // Recreate the mode stored by the former portal before fullscreen was enforced.
+        $quick->update(['display_mode' => QuickPlayDisplayMode::Business]);
         $device->update(['business_id' => Business::factory()->create()->id]);
-        $this->actingAs($user)->post('/business/quick-play/'.$quick->id.'/retry')->assertSessionHasErrors('targets');
+        try {
+            app(RetryQuickPlay::class)->handle($quick, $user);
+            $this->fail('A retry must not follow a transferred device.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('targets', $exception->errors());
+        }
         $this->assertDatabaseCount('quick_plays', 1);
+        $this->assertDatabaseCount('device_commands', 1);
     }
 
-    public function test_management_requires_permissions_in_both_portals(): void
+    public function test_admin_management_requires_permissions(): void
     {
         [$quick] = $this->delivery();
         $this->markFailed($quick);
@@ -213,14 +216,8 @@ class QuickPlayManagementTest extends TestCase
         $this->post('/admin/quick-play/'.$quick->id.'/retry')->assertForbidden();
         $this->delete('/admin/quick-play/'.$quick->id)->assertForbidden();
 
-        [$businessQuick, , , $user] = $this->delivery(Business::factory()->create());
-        $this->markFailed($businessQuick);
-        $user->syncRoles([]);
-        $this->actingAs($user->fresh());
-        $this->post('/business/quick-play/'.$businessQuick->id.'/retry')->assertForbidden();
-        $this->delete('/business/quick-play/'.$businessQuick->id)->assertForbidden();
-        $this->assertDatabaseCount('quick_plays', 2);
-        $this->assertSame(2, QuickPlay::query()->count());
+        $this->assertDatabaseCount('quick_plays', 1);
+        $this->assertNotNull($quick->fresh());
     }
 
     public function test_late_status_cannot_regress_a_failed_attempt_or_change_its_retry(): void

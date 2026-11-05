@@ -12,6 +12,7 @@ use App\Domain\Devices\Enums\DeviceStatus;
 use App\Domain\Devices\Models\Device;
 use App\Domain\Devices\Models\DeviceActivation;
 use App\Domain\Devices\Models\GlobalScreenPin;
+use App\Domain\Locations\Models\City;
 use App\Domain\Media\Models\Layout;
 use App\Domain\Operations\Actions\RecordAudit;
 use App\Http\Controllers\Controller;
@@ -20,6 +21,7 @@ use App\Http\Requests\Admin\DeviceCommandRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -32,7 +34,6 @@ class DeviceController extends Controller
         $request->validate([
             'search' => ['nullable', 'string', 'max:120'],
             'status' => ['nullable', 'string'],
-            'business_id' => ['nullable', 'integer'],
             'location_id' => ['nullable', 'integer'],
             'city' => ['nullable', 'string'],
             'app_version' => ['nullable', 'string'],
@@ -43,11 +44,10 @@ class DeviceController extends Controller
         $devices = Device::query()
             ->search($request->string('search')->toString())
             ->withStatus($request->string('status')->toString() ?: null)
-            ->when($request->filled('business_id'), fn ($q) => $q->where('business_id', $request->integer('business_id')))
             ->when($request->filled('location_id'), fn ($q) => $q->where('location_id', $request->integer('location_id')))
-            ->when($request->filled('city'), fn ($q) => $q->whereHas('location', fn ($qq) => $qq->where('city', $request->string('city'))))
+            ->when($request->filled('city'), fn ($q) => $q->whereHas('cities', fn ($qq) => $qq->where('cities.name', $request->string('city'))->where('cities.status', 'active')))
             ->when($request->filled('app_version'), fn ($q) => $q->where('app_version', $request->string('app_version')))
-            ->with(['business', 'location', 'currentLayout'])
+            ->with(['cities', 'currentLayout'])
             ->orderBy($request->string('sort', 'name')->toString(), $request->string('direction', 'asc')->toString())
             ->paginate(15)
             ->withQueryString()
@@ -55,7 +55,7 @@ class DeviceController extends Controller
 
         return Inertia::render('Admin/Devices/Index', [
             'devices' => $devices,
-            'filters' => $request->only('search', 'status', 'business_id', 'location_id', 'city', 'app_version', 'sort', 'direction'),
+            'filters' => $request->only('search', 'status', 'location_id', 'city', 'app_version', 'sort', 'direction'),
             'options' => $this->filterOptions(),
         ]);
     }
@@ -64,7 +64,7 @@ class DeviceController extends Controller
     {
         $this->authorize('view', $device);
 
-        $device->load(['business', 'location', 'currentLayout', 'currentPlaylist']);
+        $device->load(['cities', 'currentLayout', 'currentPlaylist']);
 
         $commands = $device->commands()->with('creator')->latest()->limit(20)->get()
             ->map(fn ($command) => EntityPresenter::deviceCommand($command));
@@ -177,8 +177,8 @@ class DeviceController extends Controller
         app(RecordAudit::class)->handle('device.status.changed', $device, ['status' => $old->value], ['status' => $newStatus->value]);
 
         return back()->with('success', $newStatus === DeviceStatus::Disabled
-            ? 'Pantalla deshabilitada.'
-            : 'Pantalla habilitada.');
+            ? 'Aviso LED deshabilitado.'
+            : 'Aviso LED habilitado.');
     }
 
     public function revokeToken(Device $device): RedirectResponse
@@ -189,7 +189,7 @@ class DeviceController extends Controller
 
         app(RecordAudit::class)->handle('device.token.revoked', $device);
 
-        return back()->with('success', 'Acceso de la pantalla revocado. Deberá activarse de nuevo.');
+        return back()->with('success', 'Acceso del aviso LED revocado. Deberá activarse de nuevo.');
     }
 
     public function destroy(Device $device): RedirectResponse
@@ -204,7 +204,7 @@ class DeviceController extends Controller
             $device->delete();
         });
 
-        return redirect()->route('devices.index')->with('success', 'Pantalla eliminada.');
+        return redirect()->route('devices.index')->with('success', 'Aviso LED eliminado.');
     }
 
     public function activations(): Response
@@ -212,7 +212,7 @@ class DeviceController extends Controller
         $this->authorize('viewAny', Device::class);
 
         $activations = DeviceActivation::query()
-            ->with(['business', 'location'])
+            ->with('city')
             ->latest()
             ->limit(50)
             ->get()
@@ -220,14 +220,7 @@ class DeviceController extends Controller
 
         return Inertia::render('Admin/Devices/Activations', [
             'activations' => $activations,
-            'businesses' => Business::query()
-                ->orderBy('name')
-                ->get(['id', 'name'])
-                ->map(fn ($business) => [
-                    'id' => $business->id,
-                    'name' => $business->name,
-                    'locations' => $business->locations()->get(['id', 'name'])->map(fn ($l) => ['id' => $l->id, 'name' => $l->name]),
-                ]),
+            'cities' => City::query()->where('status', 'active')->orderBy('name')->get(['id', 'name', 'state']),
         ]);
     }
 
@@ -236,21 +229,28 @@ class DeviceController extends Controller
         $this->authorize('update', new Device);
 
         $data = $request->validate([
-            'business_id' => ['required', 'integer', 'exists:businesses,id'],
-            'location_id' => ['nullable', 'integer', 'exists:locations,id'],
             'device_name' => ['nullable', 'string', 'max:160'],
+            'city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')->where(fn ($q) => $q->where('status', 'active')->whereNull('deleted_at'))],
         ]);
+
+        // Existing installations retain the association required by the device schema.
+        // New unlocated notices use a private system record instead of a restaurant.
+        $businessId = $activation->business_id ?? Business::query()->firstOrCreate(
+            ['slug' => 'avisos-led-interno'],
+            ['name' => 'Avisos LED', 'category' => 'other', 'status' => 'active', 'timezone' => config('app.timezone')],
+        )->id;
 
         app(AssignActivation::class)->handle(
             $activation,
-            $data['business_id'],
-            $data['location_id'] ?? null,
+            $businessId,
+            $activation->location_id,
             $data['device_name'] ?? null,
+            $data['city_id'] ?? null,
         );
 
         app(RecordAudit::class)->handle('device.activation.assigned', $activation, [], $data);
 
-        return back()->with('success', 'Código asignado. La pantalla ya puede confirmar su activación.');
+        return back()->with('success', 'Código asignado. El aviso LED ya puede confirmar su activación.');
     }
 
     public function revokeActivation(DeviceActivation $activation): RedirectResponse
@@ -271,8 +271,7 @@ class DeviceController extends Controller
     {
         return [
             'statuses' => collect(DeviceStatus::cases())->map(fn ($status) => ['value' => $status->value, 'label' => $status->label()])->all(),
-            'businesses' => DB::table('businesses')->orderBy('name')->get(['id', 'name']),
-            'cities' => DB::table('locations')->distinct()->orderBy('city')->pluck('city'),
+            'cities' => City::query()->where('status', 'active')->distinct()->orderBy('name')->pluck('name'),
             'appVersions' => Device::query()->whereNotNull('app_version')->distinct()->orderBy('app_version')->pluck('app_version'),
         ];
     }

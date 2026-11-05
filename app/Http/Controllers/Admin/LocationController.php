@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Domain\Businesses\Models\Business;
 use App\Domain\Campaigns\Models\CampaignTarget;
+use App\Domain\Devices\Models\Device;
 use App\Domain\Locations\Actions\UpdateCityCampaigns;
 use App\Domain\Locations\Enums\LocationStatus;
 use App\Domain\Locations\Models\City;
@@ -24,23 +24,21 @@ class LocationController extends Controller
         $request->validate([
             'search' => ['nullable', 'string', 'max:120'],
             'status' => ['nullable', 'string'],
-            'business_id' => ['nullable', 'integer'],
         ]);
 
-        $locations = City::query()->with('businesses:id,name')
+        $locations = City::query()->with('devices:id,name')
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($q) => $q
                 ->where('name', 'like', '%'.$request->string('search').'%')
                 ->orWhere('state', 'like', '%'.$request->string('search').'%')))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
-            ->when($request->filled('business_id'), fn ($q) => $q->whereHas('businesses', fn ($q) => $q->where('businesses.id', $request->integer('business_id'))))
             ->orderBy('name')->paginate(15)->withQueryString()->through(fn ($city) => $this->present($city));
 
         return Inertia::render('Admin/Locations/Index', [
             'locations' => $locations,
-            'filters' => $request->only('search', 'status', 'business_id'),
+            'filters' => $request->only('search', 'status'),
             'options' => [
                 'statuses' => collect(LocationStatus::cases())->map(fn ($s) => ['value' => $s->value, 'label' => $s->label()]),
-                'businesses' => Business::query()->orderBy('name')->get(['id', 'name']),
+                'devices' => Device::query()->orderBy('name')->get(['id', 'name']),
             ],
         ]);
     }
@@ -48,8 +46,8 @@ class LocationController extends Controller
     public function store(CityRequest $request, UpdateCityCampaigns $campaigns): RedirectResponse
     {
         $campaigns->handle(function () use ($request) {
-            $city = City::query()->create($request->safe()->except('business_ids'));
-            $city->businesses()->sync($request->validated('business_ids'));
+            $city = City::query()->create($request->safe()->except('device_ids'));
+            $city->devices()->sync($request->validated('device_ids'));
             app(RecordAudit::class)->handle('city.created', $city);
         }, [$request->validated('name')]);
 
@@ -59,11 +57,11 @@ class LocationController extends Controller
     public function show(City $location): Response
     {
         $this->authorize('locations.view');
-        $location->load('businesses:id,name');
+        $location->load('devices:id,name');
 
         return Inertia::render('Admin/Locations/Show', [
             'location' => $this->present($location),
-            'devices' => $location->devices()->with(['business', 'currentLayout', 'currentPlaylist'])->latest()->get()
+            'devices' => $location->devices()->with(['cities', 'currentLayout', 'currentPlaylist'])->latest()->get()
                 ->map(fn ($device) => EntityPresenter::device($device)),
         ]);
     }
@@ -76,8 +74,8 @@ class LocationController extends Controller
                 CampaignTarget::query()->where('target_type', 'city')->whereNull('target_id')
                     ->where('target_value', $location->name)->update(['target_id' => $location->id, 'target_value' => null]);
             }
-            $location->update($request->safe()->except('business_ids'));
-            $location->businesses()->sync($request->validated('business_ids'));
+            $location->update($request->safe()->except('device_ids'));
+            $location->devices()->sync($request->validated('device_ids'));
             app(RecordAudit::class)->handle('city.updated', $location);
         }, [$location->name, $request->validated('name')], $location->id);
 
@@ -88,7 +86,6 @@ class LocationController extends Controller
     {
         $this->authorize('locations.manage');
         $campaigns->handle(function () use ($location) {
-            $location->businesses()->detach();
             $location->delete();
             app(RecordAudit::class)->handle('city.deleted', $location);
         }, [$location->name], $location->id);
@@ -102,7 +99,7 @@ class LocationController extends Controller
             'id' => $city->id, 'name' => $city->name, 'state' => $city->state,
             'country' => $city->country, 'timezone' => $city->timezone,
             'status' => EntityPresenter::enum($city->status),
-            'businesses' => $city->businesses->map(fn ($business) => ['id' => $business->id, 'name' => $business->name]),
+            'devices' => $city->devices->map(fn ($device) => ['id' => $device->id, 'name' => $device->name]),
             'devices_count' => $city->devices()->count(),
             'online_devices_count' => $city->devices()->where('status', 'online')->count(),
         ];

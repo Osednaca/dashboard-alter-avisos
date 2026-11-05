@@ -32,7 +32,7 @@ class MarkOfflineDevices implements ShouldQueue
 
                     $alerts->handle(
                         AlertType::DeviceOffline,
-                        'Pantalla desconectada',
+                        'Aviso LED desconectado',
                         "«{$device->name}» de {$device->business?->name} lleva {$minutes} minutos sin reportar.",
                         AlertSeverity::Critical,
                         $device,

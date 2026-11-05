@@ -31,9 +31,7 @@ class LoginController extends Controller
         $user = $request->user();
         $user->forceFill(['last_login_at' => now()])->save();
 
-        $home = $user->hasPermission('business.dashboard.view') && ! $user->hasPermission('devices.view')
-            ? route('business.dashboard')
-            : route('dashboard');
+        $home = route('dashboard');
 
         return redirect()->to($destination->resolve($request, $home));
     }

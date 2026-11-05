@@ -160,6 +160,7 @@ export interface DeviceEntity {
     is_online: boolean;
     business: { id: number; name: string } | null;
     location: { id: number; name: string; city: string } | null;
+    cities?: Array<{ id: number; name: string }>;
     app_version: string | null;
     last_seen_at: string | null;
     last_sync_at: string | null;

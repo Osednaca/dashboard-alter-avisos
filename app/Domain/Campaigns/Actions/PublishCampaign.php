@@ -42,7 +42,7 @@ class PublishCampaign
         if ($campaign->targets->isEmpty()) {
             $this->alerts->handle(
                 AlertType::CampaignWithoutTargets,
-                'Campaña sin pantallas objetivo',
+                'Campaña sin avisos LED objetivo',
                 "La campaña «{$campaign->name}» no tiene segmentación definida.",
                 AlertSeverity::Critical,
                 $campaign,
@@ -63,14 +63,14 @@ class PublishCampaign
         if ($summary['screens'] === 0) {
             $this->alerts->handle(
                 AlertType::CampaignWithoutTargets,
-                'Campaña sin pantallas activas',
-                "La segmentación de «{$campaign->name}» no coincide con ninguna pantalla activa.",
+                'Campaña sin avisos LED activos',
+                "La segmentación de «{$campaign->name}» no coincide con ningún aviso LED activo.",
                 AlertSeverity::Critical,
                 $campaign,
             );
 
             throw ValidationException::withMessages([
-                'targets' => 'La segmentación no coincide con ninguna pantalla activa.',
+                'targets' => 'La segmentación no coincide con ningún aviso LED activo.',
             ]);
         }
 

@@ -36,7 +36,7 @@ class DeviceDeletionTest extends TestCase
         ]);
 
         $this->actingAs($admin)->delete("/admin/devices/{$device->id}")
-            ->assertRedirect('/admin/devices')->assertSessionHas('success', 'Pantalla eliminada.');
+            ->assertRedirect('/admin/devices')->assertSessionHas('success', 'Aviso LED eliminado.');
 
         foreach (['devices' => 'id', 'device_commands' => 'device_id', 'device_heartbeats' => 'device_id',
             'device_manifests' => 'device_id', 'playback_events' => 'device_id',

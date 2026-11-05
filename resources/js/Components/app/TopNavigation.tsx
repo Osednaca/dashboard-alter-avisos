@@ -62,7 +62,7 @@ export function TopNavigation({
                 className="group flex h-10 min-w-0 flex-1 items-center gap-2 rounded-control border border-line bg-surface px-3 text-left text-sm text-muted transition-colors hover:border-line-strong sm:gap-3 lg:max-w-xl"
             >
                 <Search className="size-4 text-faint" />
-                <span className="flex-1 truncate">Buscar negocios, pantallas, campañas o anunciantes…</span>
+                <span className="flex-1 truncate">Buscar avisos LED, campañas o anunciantes…</span>
                 <span className="hidden items-center gap-1 sm:flex">
                     <kbd className="rounded border border-line bg-inset px-1.5 py-0.5 text-[10px] text-faint">Ctrl</kbd>
                     <kbd className="rounded border border-line bg-inset px-1.5 py-0.5 text-[10px] text-faint">K</kbd>

@@ -10,11 +10,47 @@ use App\Domain\Media\Models\Layout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Concerns\CreatesUsers;
 use Tests\TestCase;
 
 class DeviceActivationTest extends TestCase
 {
-    use RefreshDatabase;
+    use CreatesUsers, RefreshDatabase;
+
+    public function test_admin_can_assign_and_activate_without_selecting_a_business(): void
+    {
+        $admin = $this->superAdmin();
+        $activation = DeviceActivation::query()->create([
+            'code' => 'LED123', 'device_uuid' => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            'status' => 'pending', 'expires_at' => now()->addHour(),
+        ]);
+
+        $this->actingAs($admin)->post("/admin/activations/{$activation->id}/assign", [
+            'device_name' => 'Aviso principal',
+        ])->assertSessionHasNoErrors();
+        $this->assertNotNull($activation->fresh()->business_id);
+        $this->postJson('/api/v1/device/activation/confirm', [
+            'code' => 'LED123', 'device_uuid' => $activation->device_uuid,
+        ])->assertCreated()->assertJsonStructure(['token', 'device']);
+        $this->assertDatabaseHas('devices', [
+            'name' => 'Aviso principal', 'business_id' => $activation->fresh()->business_id,
+        ]);
+    }
+
+    public function test_reassigning_an_existing_activation_preserves_its_legacy_location(): void
+    {
+        $location = Location::factory()->create();
+        $activation = DeviceActivation::query()->create([
+            'code' => 'LED456', 'status' => 'pending', 'expires_at' => now()->addHour(),
+            'business_id' => $location->business_id, 'location_id' => $location->id,
+        ]);
+
+        $this->actingAs($this->superAdmin())->post("/admin/activations/{$activation->id}/assign", [
+            'device_name' => 'Aviso',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame($location->business_id, $activation->fresh()->business_id);
+        $this->assertSame($location->id, $activation->fresh()->location_id);
+    }
 
     public function test_a_device_can_request_an_activation_code(): void
     {
@@ -115,8 +151,8 @@ class DeviceActivationTest extends TestCase
         $this->withToken($first->json('token'))->getJson('/api/v1/device/manifest')->assertOk()
             ->assertJsonPath('manifest.payload.layout.id', $device->current_layout_id)
             ->assertJsonPath('manifest.payload.layout.orientation', 'portrait')
-            ->assertJsonPath('manifest.payload.layout.business_percentage', 60)
-            ->assertJsonPath('manifest.payload.layout.advertising_percentage', 40)
+            ->assertJsonPath('manifest.payload.layout.business_percentage', 0)
+            ->assertJsonPath('manifest.payload.layout.advertising_percentage', 100)
             ->assertJsonPath('manifest.payload.layout.configuration.rotation', 90)
             ->assertJsonPath('manifest.payload.layout.configuration.split', 'top_bottom')
             ->assertJsonPath('manifest.payload.layout.configuration.business_area', $expectedArea)
@@ -159,8 +195,8 @@ class DeviceActivationTest extends TestCase
             ->assertJsonPath('manifest.payload.layout.configuration.audio_mode', 'advertising')
             ->assertJsonPath('manifest.payload.layout.configuration.business_area', 'top')
             ->assertJsonPath('manifest.payload.layout.configuration.advertising_area', 'bottom')
-            ->assertJsonPath('manifest.payload.layout.business_percentage', 70)
-            ->assertJsonPath('manifest.payload.layout.advertising_percentage', 30);
+            ->assertJsonPath('manifest.payload.layout.business_percentage', 0)
+            ->assertJsonPath('manifest.payload.layout.advertising_percentage', 100);
         $this->assertFalse($activation->fresh()->device->currentLayout->is_default);
         $this->assertDatabaseCount('layouts', 1);
     }

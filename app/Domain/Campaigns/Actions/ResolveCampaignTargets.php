@@ -12,6 +12,8 @@ use App\Domain\Locations\Models\City;
 use App\Domain\Locations\Models\Location;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ResolveCampaignTargets
 {
@@ -59,10 +61,10 @@ class ResolveCampaignTargets
             'screens' => (clone $query)->count(),
             'businesses' => (clone $query)->distinct()->count('business_id'),
             'locations' => (clone $query)->whereNotNull('location_id')->distinct()->count('location_id'),
-            'cities' => City::query()->where('status', 'active')->whereHas('businesses', fn ($q) => $q
-                ->whereIn('businesses.id', (clone $query)->select('devices.business_id')))->count()
+            'cities' => City::query()->where('status', 'active')->whereHas('devices', fn ($q) => $q
+                ->whereIn('devices.id', (clone $query)->select('devices.id')))->count()
                 + (clone $query)->join('locations', 'locations.id', '=', 'devices.location_id')
-                    ->whereDoesntHave('business.cities', fn ($q) => $q->where('cities.status', 'active'))
+                    ->whereDoesntHave('cities', fn ($q) => $q->where('cities.status', 'active'))
                     ->whereNotIn('locations.city', City::withTrashed()->select('name'))->distinct()->count('locations.city'),
         ];
     }
@@ -104,15 +106,21 @@ class ResolveCampaignTargets
         $ids = $targets->pluck('target_id')->filter()->values();
         $names = $targets->filter(fn ($target) => ! $target->target_id)->pluck('target_value')->filter()->values();
         $catalogue = City::query()->where('status', 'active')->where(fn ($q) => $q->whereIn('id', $ids)->orWhereIn('name', $names));
-        $businessIds = Business::query()->whereHas('cities', fn ($q) => $q->whereIn('cities.id', $catalogue->select('id')))->select('id');
+        // The earlier city migration invokes this resolver before city_device exists.
+        // Once the new table exists it is the sole authority for catalogue membership.
+        $directMembership = Schema::hasTable('city_device');
+        $members = $directMembership
+            ? DB::table('city_device')->whereIn('city_id', $catalogue->select('id'))->select('device_id')
+            : Business::query()->whereHas('cities', fn ($q) => $q->whereIn('cities.id', $catalogue->select('id')))->select('id');
+        $memberColumn = $directMembership ? 'devices.id' : 'devices.business_id';
         // A disabled/deleted or unassigned catalogue city must never fall back to branches.
         $legacy = Location::query()->whereIn('city', $names)
             ->whereNotIn('city', City::withTrashed()->select('name'))->select('id');
         if ($inclusive) {
-            $query->orWhere(fn ($q) => $q->whereIn('devices.business_id', $businessIds)->orWhereIn('devices.location_id', $legacy));
+            $query->orWhere(fn ($q) => $q->whereIn($memberColumn, $members)->orWhereIn('devices.location_id', $legacy));
         } else {
             // Null branch IDs are eligible and must survive an unrelated exclusion.
-            $query->whereNotIn('devices.business_id', $businessIds)
+            $query->whereNotIn($memberColumn, $members)
                 ->where(fn ($q) => $q->whereNull('devices.location_id')->orWhereNotIn('devices.location_id', $legacy));
         }
     }

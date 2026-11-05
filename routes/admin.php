@@ -5,7 +5,6 @@ use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\AndroidUpdateController;
 use App\Http\Controllers\Admin\AuditController;
-use App\Http\Controllers\Admin\BusinessController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DeviceController;
@@ -29,13 +28,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('search', SearchController::class)->name('search');
-
-// Businesses
-Route::get('businesses', [BusinessController::class, 'index'])->middleware('permission:businesses.view')->name('businesses.index');
-Route::post('businesses', [BusinessController::class, 'store'])->middleware('permission:businesses.create')->name('businesses.store');
-Route::get('businesses/{business}', [BusinessController::class, 'show'])->middleware('permission:businesses.view')->name('businesses.show');
-Route::put('businesses/{business}', [BusinessController::class, 'update'])->middleware('permission:businesses.edit')->name('businesses.update');
-Route::delete('businesses/{business}', [BusinessController::class, 'destroy'])->middleware('permission:businesses.delete')->name('businesses.destroy');
 
 // Locations
 Route::get('locations', [LocationController::class, 'index'])->middleware('permission:locations.view')->name('locations.index');
