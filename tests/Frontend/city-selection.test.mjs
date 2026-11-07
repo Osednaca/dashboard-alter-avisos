@@ -14,3 +14,10 @@ test('city selection counts each eligible device once even when cities overlap',
     assert.equal(countCityDevices(cities, [3], [1, 2, 3]), 0);
     assert.equal(countCityDevices(cities, [], [1, 2, 3]), 0);
 });
+
+test('business selection counts only eligible unique devices across selected businesses', () => {
+    const businesses = [{ id: 1, device_ids: [2, 4, 5] }, { id: 2, device_ids: [4, 8] }, { id: 3, device_ids: [9] }];
+    assert.equal(countCityDevices(businesses, [1, 2], [2, 4, 8]), 3);
+    assert.equal(countCityDevices(businesses, [2], [2, 4, 8]), 2);
+    assert.equal(countCityDevices(businesses, [3], [2, 4, 8]), 0);
+});

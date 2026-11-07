@@ -65,7 +65,7 @@ class CampaignTargetValidationTest extends TestCase
         $expected = collect($expected)->sortBy('target_type')->values()->all();
         $this->actingAs($this->superAdmin());
         $targets = $this->get("/admin/campaigns/{$campaign->id}/edit")->assertOk()->inertiaProps('campaign.targets');
-        $visible = collect($expected)->filter(fn ($target) => in_array($target['target_type'], ['city', 'device'], true))->values()->all();
+        $visible = collect($expected)->filter(fn ($target) => in_array($target['target_type'], ['city', 'device', 'business'], true))->values()->all();
         $this->assertSame($visible, collect($targets)->sortBy('target_type')->values()->all());
         $this->put("/admin/campaigns/{$campaign->id}", [...$this->payload($campaign), 'targets' => $targets])
             ->assertRedirect()->assertSessionHasNoErrors();
@@ -75,7 +75,7 @@ class CampaignTargetValidationTest extends TestCase
         ])->sortBy('target_type')->values()->all();
         $this->assertSame($expected, $saved);
         $this->get("/admin/campaigns/{$campaign->id}")->assertInertia(fn ($page) => $page
-            ->where('hasLegacyTargets', true)->where('targets.0.target_type.value', 'city'));
+            ->where('hasLegacyTargets', true)->where('targets.0.target_type.value', 'business'));
     }
 
     public function test_an_edited_campaign_can_be_published_using_the_form_target_payload(): void
@@ -127,7 +127,7 @@ class CampaignTargetValidationTest extends TestCase
     public function test_valid_target_types_still_require_their_id_or_value(): void
     {
         $campaign = $this->campaign();
-        $types = [CampaignTargetType::City, CampaignTargetType::Device];
+        $types = [CampaignTargetType::City, CampaignTargetType::Device, CampaignTargetType::Business];
         $targets = array_map(fn ($type) => ['target_type' => $type->value], $types);
         $errors = [];
         foreach ($types as $index => $type) {

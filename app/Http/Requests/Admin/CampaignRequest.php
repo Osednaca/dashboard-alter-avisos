@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Domain\Campaigns\Enums\CampaignTargetType;
+use App\Domain\Campaigns\Support\EditableCampaignTargets;
 use App\Domain\Media\Models\MediaAsset;
 use App\Http\Requests\Admin\Concerns\ValidatesCampaignTargets;
 use Illuminate\Foundation\Http\FormRequest;
@@ -52,9 +53,9 @@ class CampaignRequest extends FormRequest
             'creatives.*.configuration.size_acknowledged' => ['boolean'],
             'creatives.*.configuration.fallback_media_id' => ['nullable', 'integer', Rule::exists('media_assets', 'id')->where(fn ($q) => $q->whereIn('id', MediaAsset::query()->advertising()->ready()->whereIn('type', ['image', 'video'])->select('id')))],
 
-            'targets' => ['present', 'array', 'max:200', ...($this->route('campaign')?->targets()->whereNotIn('target_type', ['city', 'device'])->exists() ? [] : ['min:1'])],
+            'targets' => ['present', 'array', 'max:200', ...($this->route('campaign') && app(EditableCampaignTargets::class)->hasHidden($this->route('campaign')) ? [] : ['min:1'])],
             'targets.*' => ['required', 'array'],
-            'targets.*.target_type' => ['bail', 'required', 'string', Rule::in([CampaignTargetType::City->value, CampaignTargetType::Device->value])],
+            'targets.*.target_type' => ['bail', 'required', 'string', Rule::in([CampaignTargetType::City->value, CampaignTargetType::Device->value, CampaignTargetType::Business->value])],
             'targets.*.target_id' => ['nullable', 'integer'],
             'targets.*.target_value' => ['nullable', 'string', 'max:160'],
             'targets.*.is_exclusion' => ['boolean'],
@@ -83,6 +84,11 @@ class CampaignRequest extends FormRequest
             }
 
             $this->validateTargets($validator);
+            $campaign = $this->route('campaign');
+            if ($validator->errors()->isEmpty() && $campaign && app(EditableCampaignTargets::class)
+                ->wouldExpandWithoutVisibleInclusions($campaign, $this->input('targets', []))) {
+                $validator->errors()->add('targets', 'Conserva al menos una inclusión para evitar ampliar el alcance de la segmentación anterior.');
+            }
         });
     }
 }

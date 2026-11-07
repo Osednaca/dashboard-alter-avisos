@@ -69,13 +69,16 @@ test('new and existing live creatives use fullscreen while preserving their othe
     assert.equal(config.display_mode, 'business_zone');
 });
 
-test('legacy targeting values are not returned to the server from the editor', () => {
+test('editing retains business inclusion and exclusion while filtering other legacy targets', () => {
     const targets = [
         { target_type: 'business', target_id: 24, target_value: null, is_exclusion: false },
+        { target_type: 'business', target_id: 25, target_value: null, is_exclusion: true },
         { target_type: 'business_category', target_id: null, target_value: 'restaurant', is_exclusion: true },
         { target_type: 'city', target_id: 3, target_value: null, is_exclusion: false },
     ];
     assert.deepEqual(initialCampaignValues({ has_legacy_targets: true, targets }).targets, [
+        { target_type: 'business', target_id: 24, target_value: '', is_exclusion: false },
+        { target_type: 'business', target_id: 25, target_value: '', is_exclusion: true },
         { target_type: 'city', target_id: 3, target_value: '', is_exclusion: false },
     ]);
 });

@@ -15,7 +15,8 @@ enum QuickPlayScope: string
         return match ($this) {
             self::Devices => 'Avisos LED específicos',
             self::Cities => 'Por ciudad',
-            self::Businesses, self::Locations => 'Destino anterior',
+            self::Businesses => 'Por negocio',
+            self::Locations => 'Destino anterior',
             self::All => 'Todos los avisos LED',
         };
     }

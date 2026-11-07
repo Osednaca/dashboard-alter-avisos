@@ -22,7 +22,7 @@ import { usePermissions } from '@/Hooks/usePermissions';
 import { AdminLayout } from '@/Layouts/AdminLayout';
 import type { MediaEntity } from '@/Types';
 import { formatNumber } from '@/Utils/format';
-import { countCityDevices } from '@/Utils/citySelection';
+import { countCityDevices as countTargetDevices } from '@/Utils/citySelection';
 import { cn } from '@/Utils/cn';
 
 interface DeviceOption {
@@ -33,7 +33,7 @@ interface DeviceOption {
     is_online: boolean;
 }
 
-interface CityOption {
+interface TargetGroupOption {
     id: number;
     name: string;
     device_ids: number[];
@@ -42,7 +42,8 @@ interface CityOption {
 interface Options {
     media: MediaEntity[];
     devices: DeviceOption[];
-    cities: CityOption[];
+    cities: TargetGroupOption[];
+    businesses: TargetGroupOption[];
     displayModes: Array<{ value: string; label: string; description: string }>;
     scopes: Array<{ value: string; label: string }>;
     counts: { devices: number };
@@ -61,6 +62,7 @@ export default function QuickPlayCreate({ options }: { options: Options }) {
         natural_duration: false,
         device_ids: [] as number[],
         city_ids: [] as number[],
+        business_ids: [] as number[],
     });
 
     const { data, setData, errors } = form;
@@ -74,18 +76,23 @@ export default function QuickPlayCreate({ options }: { options: Options }) {
     );
 
     const isVideo = selectedMedia?.type?.value === 'video';
+    const eligibleDeviceIds = useMemo(() => options.devices.map((device) => device.id), [options.devices]);
+    const eligibleDeviceIdSet = useMemo(() => new Set(eligibleDeviceIds), [eligibleDeviceIds]);
 
     const targetCount = useMemo(() => {
         switch (data.scope) {
             case 'devices':
                 return data.device_ids.length;
             case 'cities': {
-                return countCityDevices(options.cities, data.city_ids, options.devices.map((device) => device.id));
+                return countTargetDevices(options.cities, data.city_ids, eligibleDeviceIds);
+            }
+            case 'businesses': {
+                return countTargetDevices(options.businesses, data.business_ids, eligibleDeviceIds);
             }
             default:
                 return options.counts.devices;
         }
-    }, [data.scope, data.device_ids, data.city_ids, options]);
+    }, [data.scope, data.device_ids, data.city_ids, data.business_ids, options, eligibleDeviceIds]);
 
     const filteredDevices = useMemo(() => {
         const term = deviceSearch.trim().toLowerCase();
@@ -115,7 +122,7 @@ export default function QuickPlayCreate({ options }: { options: Options }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isVideo]);
 
-    const toggle = (field: 'device_ids' | 'city_ids', id: number) => {
+    const toggle = (field: 'device_ids' | 'city_ids' | 'business_ids', id: number) => {
         const current = data[field];
         setData(field, current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
     };
@@ -204,7 +211,7 @@ export default function QuickPlayCreate({ options }: { options: Options }) {
                         <CardContent className="space-y-4">
                             <Tabs value={data.scope} onValueChange={(value) => setData('scope', value)}>
                                 <TabsList className="grid w-full grid-cols-2 sm:flex">
-                                    {options.scopes.filter((scope) => ['devices', 'cities', 'all'].includes(scope.value)).map((scope) => (
+                                    {options.scopes.filter((scope) => ['devices', 'cities', 'businesses', 'all'].includes(scope.value)).map((scope) => (
                                         <TabsTrigger key={scope.value} value={scope.value} className="min-w-0 flex-1 justify-center whitespace-normal text-center">
                                             {scope.label}
                                         </TabsTrigger>
@@ -249,6 +256,19 @@ export default function QuickPlayCreate({ options }: { options: Options }) {
                                 />
                             ) : null}
 
+                            {data.scope === 'businesses' ? (
+                                <SelectionList
+                                    items={options.businesses.map((business) => ({
+                                        id: business.id,
+                                        title: business.name,
+                                        subtitle: `${new Set(business.device_ids.filter((id) => eligibleDeviceIdSet.has(id))).size} avisos LED`,
+                                        online: true,
+                                    }))}
+                                    selected={data.business_ids}
+                                    onToggle={(id) => toggle('business_ids', id)}
+                                />
+                            ) : null}
+
                             {data.scope === 'all' ? (
                                 <p className="rounded-control border border-info/25 bg-info/10 px-4 py-3 text-xs text-info">
                                     Se enviará a los {formatNumber(options.counts.devices)} avisos LED activos de la red.
@@ -258,6 +278,7 @@ export default function QuickPlayCreate({ options }: { options: Options }) {
                             {targetError ? <p className="text-xs text-danger">{targetError}</p> : null}
                             {errors.device_ids ? <p className="text-xs text-danger">{errors.device_ids}</p> : null}
                             {errors.city_ids ? <p className="text-xs text-danger">{errors.city_ids}</p> : null}
+                            {errors.business_ids ? <p className="text-xs text-danger">{errors.business_ids}</p> : null}
                             {errors.scope ? <p className="text-xs text-danger">{errors.scope}</p> : null}
                         </CardContent>
                     </Card>
