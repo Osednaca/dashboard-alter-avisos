@@ -169,7 +169,6 @@ export interface DeviceEntity {
     storage_usage: number | null;
     current_manifest_version: string | null;
     pending_manifest_version: string | null;
-    current_layout: { id: number; name: string; ratio: string } | null;
     current_playlist: { id: number; name: string } | null;
     created_at: string | null;
 }

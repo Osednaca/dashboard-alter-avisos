@@ -97,7 +97,6 @@ export default function DevicesIndex({
                 ),
         },
         { key: 'manifest', header: 'Manifiesto', cell: (row) => <span className="metric text-muted">{row.current_manifest_version ?? '—'}</span> },
-        { key: 'layout', header: 'Layout', cell: (row) => <span className="text-muted">{row.current_layout?.name ?? '—'}</span> },
         {
             key: 'actions',
             header: '',

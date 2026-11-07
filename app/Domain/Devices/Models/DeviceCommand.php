@@ -53,13 +53,14 @@ class DeviceCommand extends Model
         // Sending an HTTP response is not a receipt acknowledgement. The TV
         // persists command IDs and ignores repeats, so retry the same command
         // until its result arrives without extending its original lifetime.
-        return $query->where(fn (Builder $q) => $q
-            ->where('status', DeviceCommandStatus::Pending->value)
-            ->orWhere(fn (Builder $retry) => $retry
-                ->where('status', DeviceCommandStatus::Sent->value)
-                ->where(fn (Builder $sent) => $sent
-                    ->whereNull('sent_at')
-                    ->orWhere('sent_at', '<=', now()->subMinute()))))
+        return $query->where('command', '!=', DeviceCommandType::ChangeLayout->value)
+            ->where(fn (Builder $q) => $q
+                ->where('status', DeviceCommandStatus::Pending->value)
+                ->orWhere(fn (Builder $retry) => $retry
+                    ->where('status', DeviceCommandStatus::Sent->value)
+                    ->where(fn (Builder $sent) => $sent
+                        ->whereNull('sent_at')
+                        ->orWhere('sent_at', '<=', now()->subMinute()))))
             ->where(fn (Builder $q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
     }
 }

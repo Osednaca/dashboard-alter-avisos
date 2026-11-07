@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { FormField } from '@/Components/app/FormField';
+import { TargetingFeedback } from '@/Components/app/TargetingFeedback';
 import { MediaThumbnail } from '@/Components/app/MediaThumbnail';
 import { LiveStreamDialog } from '@/Components/app/LiveStreamDialog';
 import { LiveCampaignFields } from '@/Components/app/LiveCampaignFields';
@@ -143,9 +144,9 @@ export default function CampaignForm({ campaign, options, selectedMedia = [] }: 
         const payload = { ...data, publish };
         form.transform(() => payload);
         if (campaign) {
-            form.put(`/admin/campaigns/${campaign.id}`, { preserveScroll: true });
+            form.put(`/admin/campaigns/${campaign.id}`, { preserveScroll: true, onError: (errors) => { if (Object.keys(errors).some((key) => key === 'targets' || key.startsWith('targets.'))) setStep(2); } });
         } else {
-            form.post('/admin/campaigns', { preserveScroll: true });
+            form.post('/admin/campaigns', { preserveScroll: true, onError: (errors) => { if (Object.keys(errors).some((key) => key === 'targets' || key.startsWith('targets.'))) setStep(2); } });
         }
     };
 
@@ -321,6 +322,7 @@ export default function CampaignForm({ campaign, options, selectedMedia = [] }: 
                             targets={data.targets}
                             options={options}
                             hasLegacyTargets={!!campaign?.has_legacy_targets}
+                            error={errors.targets}
                             onAdd={addTarget}
                             onRemove={(index) => setData('targets', data.targets.filter((_, i) => i !== index))}
                         />
@@ -457,12 +459,14 @@ function TargetBuilder({
     targets,
     options,
     hasLegacyTargets,
+    error,
     onAdd,
     onRemove,
 }: {
     targets: TargetInput[];
     options: Options;
     hasLegacyTargets: boolean;
+    error?: string;
     onAdd: (target: TargetInput) => void;
     onRemove: (index: number) => void;
 }) {
@@ -563,11 +567,12 @@ function TargetBuilder({
             </div>
 
             <div>
+                <TargetingFeedback error={error} />
                 {hasLegacyTargets ? <p className="mb-2 text-xs text-muted">Esta campaña conserva segmentación anterior al guardar.</p> : null}
                 <p className="mb-2 text-xs text-muted">Reglas de segmentación ({targets.length})</p>
                 {targets.length === 0 ? (
                     <p className="rounded-control border border-dashed border-line px-4 py-6 text-center text-xs text-faint">
-                        {hasLegacyTargets ? 'No hay reglas nuevas.' : 'Añade al menos una regla.'} Las reglas de inclusión se combinan con «o»; las exclusiones restan.
+                        {hasLegacyTargets ? 'No hay reglas nuevas.' : 'Añade al menos una regla.'}
                     </p>
                 ) : (
                     <div className="flex flex-wrap gap-2">

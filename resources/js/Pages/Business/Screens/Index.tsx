@@ -59,16 +59,6 @@ export default function ScreensIndex({
         },
         { key: 'status', header: 'Estado', cell: (row) => <StatusBadge value={row.status} /> },
         { key: 'playlist', header: 'Playlist', cell: (row) => <span className="text-muted">{row.current_playlist?.name ?? '—'}</span> },
-        {
-            key: 'layout',
-            header: 'Layout',
-            cell: (row) => (
-                <span className="text-muted">
-                    {row.current_layout?.name ?? '—'}
-                    {row.current_layout ? <span className="metric text-faint"> {row.current_layout.ratio}</span> : null}
-                </span>
-            ),
-        },
         { key: 'sync', header: 'Última sinc.', cell: (row) => <span className="text-muted">{formatRelative(row.last_sync_at)}</span> },
         { key: 'app', header: 'App', cell: (row) => <span className="metric text-muted">{row.app_version ?? '—'}</span> },
         {

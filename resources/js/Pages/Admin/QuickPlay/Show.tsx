@@ -182,7 +182,7 @@ export default function QuickPlayShow({
                     <CardHeader>
                         <CardTitle>Detalles del envío</CardTitle>
                         <span className="inline-flex items-center gap-1.5 text-xs text-faint">
-                            <Zap className="size-3" /> Sin campaña · restaura el contenido al finalizar
+                            <Zap className="size-3" /> Sin campaña
                         </span>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">

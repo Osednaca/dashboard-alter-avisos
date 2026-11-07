@@ -19,7 +19,7 @@ class DeviceCommandRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'command' => ['required', Rule::enum(DeviceCommandType::class)],
+            'command' => ['required', Rule::enum(DeviceCommandType::class), Rule::notIn([DeviceCommandType::ChangeLayout->value])],
             'payload' => ['nullable', 'array'],
             'confirm' => ['nullable', 'boolean'],
         ];

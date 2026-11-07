@@ -74,9 +74,9 @@ class CampaignRequest extends FormRequest
             foreach ($this->input('creatives') as $index => $creative) {
                 if (in_array((int) $creative['media_asset_id'], $liveIds, true)) {
                     if (empty($creative['configuration'])) {
-                        $validator->errors()->add("creatives.{$index}.configuration", 'Configura el horario, la zona y el respaldo del directo.');
+                        $validator->errors()->add("creatives.{$index}.configuration", 'Configura el horario y el respaldo del directo.');
                     } elseif (empty($creative['configuration']['size_acknowledged'])) {
-                        $validator->errors()->add("creatives.{$index}.configuration.size_acknowledged", 'Revisa el tamaño de las zonas antes de publicar el directo.');
+                        $validator->errors()->add("creatives.{$index}.configuration.size_acknowledged", 'Revisa el tamaño del aviso antes de publicar el directo.');
                     }
                 } elseif (! empty($creative['configuration'])) {
                     $validator->errors()->add("creatives.{$index}.configuration", 'La configuración en vivo solo corresponde a un directo.');

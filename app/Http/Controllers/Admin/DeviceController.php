@@ -14,7 +14,6 @@ use App\Domain\Devices\Models\Device;
 use App\Domain\Devices\Models\DeviceActivation;
 use App\Domain\Devices\Models\GlobalScreenPin;
 use App\Domain\Locations\Models\City;
-use App\Domain\Media\Models\Layout;
 use App\Domain\Operations\Actions\RecordAudit;
 use App\Http\Controllers\Controller;
 use App\Http\Presenters\EntityPresenter;
@@ -48,7 +47,7 @@ class DeviceController extends Controller
             ->when($request->filled('location_id'), fn ($q) => $q->where('location_id', $request->integer('location_id')))
             ->when($request->filled('city'), fn ($q) => $q->whereHas('cities', fn ($qq) => $qq->where('cities.name', $request->string('city'))->where('cities.status', 'active')))
             ->when($request->filled('app_version'), fn ($q) => $q->where('app_version', $request->string('app_version')))
-            ->with(['business', 'cities', 'currentLayout'])
+            ->with(['business', 'cities'])
             ->orderBy($request->string('sort', 'name')->toString(), $request->string('direction', 'asc')->toString())
             ->paginate(15)
             ->withQueryString()
@@ -65,7 +64,7 @@ class DeviceController extends Controller
     {
         $this->authorize('view', $device);
 
-        $device->load(['business', 'cities', 'currentLayout', 'currentPlaylist']);
+        $device->load(['business', 'cities', 'currentPlaylist']);
 
         $commands = $device->commands()->with('creator')->latest()->limit(20)->get()
             ->map(fn ($command) => EntityPresenter::deviceCommand($command));
@@ -120,14 +119,13 @@ class DeviceController extends Controller
             'playback' => $playback,
             'heartbeats' => $heartbeats,
             'failures' => $failures,
-            'commandTypes' => collect(DeviceCommandType::cases())->map(fn ($type) => [
+            'commandTypes' => collect(DeviceCommandType::cases())->reject(fn ($type) => $type === DeviceCommandType::ChangeLayout)->map(fn ($type) => [
                 'value' => $type->value,
                 'label' => $type->label(),
                 'requires_confirmation' => $type->requiresConfirmation(),
             ])->all(),
             'options' => [
                 'businesses' => request()->user()->hasPermission('devices.manage') ? Business::query()->where('slug', '!=', Business::INTERNAL_SLUG)->orderBy('name')->get(['id', 'name']) : [],
-                'layouts' => Layout::query()->get()->map(fn ($layout) => ['id' => $layout->id, 'name' => $layout->name, 'ratio' => $layout->ratioLabel()])->all(),
             ],
         ]);
     }

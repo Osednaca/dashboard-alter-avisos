@@ -11,8 +11,8 @@ enum QuickPlayDisplayMode: string
     public function label(): string
     {
         return match ($this) {
-            self::Advertising => 'Solo zona publicitaria',
-            self::Business => 'Zona de contenido del negocio',
+            self::Advertising => 'Envío histórico',
+            self::Business => 'Envío histórico',
             self::Fullscreen => 'Pantalla completa',
         };
     }
@@ -20,9 +20,9 @@ enum QuickPlayDisplayMode: string
     public function description(): string
     {
         return match ($this) {
-            self::Advertising => 'Se muestra en la franja de publicidad respetando el layout actual.',
-            self::Business => 'Reemplaza el contenido propio del negocio sin tocar la publicidad.',
-            self::Fullscreen => 'Toma el control de ambas zonas de forma temporal y restaura el layout al terminar.',
+            self::Advertising => 'No es posible verificar cómo se mostró este envío histórico.',
+            self::Business => 'No es posible verificar cómo se mostró este envío histórico.',
+            self::Fullscreen => 'Se envía a pantalla completa y después se reanuda el contenido programado.',
         };
     }
 }

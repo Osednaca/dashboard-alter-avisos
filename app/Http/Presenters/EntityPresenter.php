@@ -156,9 +156,6 @@ class EntityPresenter
             'storage_usage' => $device->storageUsagePercentage(),
             'current_manifest_version' => $device->current_manifest_version,
             'pending_manifest_version' => $device->pending_manifest_version,
-            'current_layout' => $device->relationLoaded('currentLayout') && $device->currentLayout
-                ? ['id' => $device->currentLayout->id, 'name' => $device->currentLayout->name, 'ratio' => $device->currentLayout->ratioLabel()]
-                : null,
             'current_playlist' => null,
             'created_at' => $device->created_at?->toIso8601String(),
         ];
