@@ -1,5 +1,5 @@
 import { Head, Link, router, usePoll } from '@inertiajs/react';
-import { ArrowLeft, HardDrive, LayoutTemplate, ListVideo, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { ArrowLeft, HardDrive, ListVideo, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { BusinessScreenPreview, type BusinessPreviewData } from '@/Components/app/BusinessScreenPreview';
 import { PageHeader } from '@/Components/app/PageHeader';
 import { StatusBadge } from '@/Components/app/StatusBadge';
@@ -28,7 +28,7 @@ export default function ScreenShow({
             <PageHeader
                 eyebrow="Pantalla"
                 title={device.name}
-                description={`${device.location?.name ?? 'Sin ubicación'} · Layout ${device.current_layout?.ratio ?? '—'}`}
+                description={device.location?.name ?? 'Sin ubicación'}
                 actions={
                     <>
                         <StatusBadge value={device.status} />
@@ -73,18 +73,6 @@ export default function ScreenShow({
 
                 <div className="space-y-4 xl:col-span-5">
                     <div className="grid grid-cols-2 gap-4">
-                        <Card>
-                            <CardContent className="pt-4">
-                                <p className="flex items-center gap-1.5 text-xs text-muted">
-                                    <LayoutTemplate className="size-3.5 text-faint" /> Layout
-                                </p>
-                                <p className="mt-1 text-sm text-fg">{device.current_layout?.name ?? '—'}</p>
-                                <p className="metric text-[11px] text-faint">
-                                    Negocio {preview?.layout?.business_percentage ?? '—'}% · Publicidad{' '}
-                                    {preview?.layout?.advertising_percentage ?? '—'}%
-                                </p>
-                            </CardContent>
-                        </Card>
                         <Card>
                             <CardContent className="pt-4">
                                 <p className="flex items-center gap-1.5 text-xs text-muted">

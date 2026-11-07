@@ -37,7 +37,7 @@ const image = { id: 1, type: 'image', url: '/confirmed.jpg' };
 const video = { id: 2, type: 'video', url: '/confirmed.mp4' };
 const preview = {
     device: { id: 1, name: 'TV', is_online: true, business: { name: 'Negocio' }, location: null },
-    layout: { name: 'Confirmado', rotation: 90, split: 'top_bottom', business_first: false,
+    layout: { name: 'Diseño anterior 70/30', rotation: 90, split: 'top_bottom', business_first: false,
         business_percentage: 70, advertising_percentage: 30, ratio: '70/30' },
     business_media: video, advertising: { campaign_name: 'Pauta', media: image },
     playlist: null, manifest_version: '100', pending_manifest_version: '200', status: 'approximate',
@@ -45,15 +45,11 @@ const preview = {
 };
 const render = data => renderToStaticMarkup(React.createElement(ScreenPreview, { preview: data }));
 
-test('portrait preview shows the legacy split without exposing previous content', () => {
+test('legacy divided preview is neutral and never reveals historical media or ratios', () => {
     const html = render(preview);
     assert.match(html, /aspect-ratio:9 \/ 16/);
-    assert.match(html, /Vertical · 90°/);
-    assert.match(html, /Arriba \/ abajo/);
-    assert.ok(html.indexOf('data-preview-zone="advertising"') < html.indexOf('data-preview-zone="business"'));
-    assert.doesNotMatch(html, /<video[^>]*src="\/confirmed.mp4"/);
-    assert.match(html, /<img[^>]*src="\/confirmed.jpg"/);
-    assert.match(html, /no está sincronizada/);
+    assert.match(html, /Formato anterior/);
+    assert.doesNotMatch(html, /70\/30|Arriba \/ abajo|Izquierda \/ derecha|<img|<video|data-preview-zone=/);
     assert.match(html, /cambios pendientes de confirmar/);
 });
 
@@ -68,9 +64,9 @@ test('explicit zero and 180 remain horizontal while 270 is vertical', () => {
     for (const rotation of [0, 90, 180, 270]) {
         const html = render({ ...preview, layout: { ...preview.layout, rotation, split: 'side_by_side', business_first: true } });
         assert.match(html, new RegExp(`>${rotation % 180 ? 'Vertical' : 'Horizontal'} · ${rotation}°<`));
-        assert.match(html, /Izquierda \/ derecha/);
+        assert.doesNotMatch(html, /Izquierda \/ derecha|70\/30/);
         assert.match(html, rotation % 180 ? /aspect-ratio:9 \/ 16/ : /aspect-ratio:16 \/ 9/);
-        assert.ok(html.indexOf('data-preview-zone="business"') < html.indexOf('data-preview-zone="advertising"'));
+        assert.doesNotMatch(html, /data-preview-zone=/);
     }
 });
 
@@ -84,7 +80,7 @@ test('unconfirmed content is visibly unavailable and does not claim playback', (
 test('live sources use the embedded player rather than an image URL', () => {
     const live = { id: 3, type: 'live_stream', url: 'https://www.youtube.com/watch?v=abcdefghijk',
         live: { provider: 'youtube', original_url: 'https://www.youtube.com/watch?v=abcdefghijk', source_id: 'abcdefghijk', embed_url: '/live/embed/3?signature=test' } };
-    const html = render({ ...preview, business_media: null, advertising: { campaign_name: 'Directo', media: live } });
+    const html = render({ ...preview, layout: { ...preview.layout, business_percentage: 0, advertising_percentage: 100 }, business_media: null, advertising: { campaign_name: 'Directo', media: live } });
     assert.match(html, /<iframe[^>]*src="\/live\/embed\/3\?signature=test"/);
     assert.doesNotMatch(html, /<img/);
     assert.match(html, /Vista aproximada/);
@@ -104,19 +100,18 @@ const report = {
 const actual = { ...preview, playback_reported: true, status: 'reported', playback: report,
     layout: { ...preview.layout, width_px: 1080, height_px: 1920 } };
 
-test('actual report preserves the legacy zone status without exposing its media', () => {
+test('legacy reported content is not misrepresented as fullscreen', () => {
     const html = render(actual);
     assert.match(html, /aspect-ratio:1080 \/ 1920/);
     assert.match(html, /Estado reportado/);
-    assert.match(html, /Reproduciendo/);
-    assert.doesNotMatch(html, /<video|\/confirmed.mp4|\/confirmed.jpg/);
-    assert.match(html, /data-preview-zone="business"/);
-    assert.doesNotMatch(html, /data-preview-zone="advertising"/);
+    assert.match(html, /Formato anterior/);
+    assert.doesNotMatch(html, /<video|<img|70\/30|data-preview-zone=/);
 });
 
 test('reported advertising video uses the current source without a loop', () => {
-    const html = render({ ...actual, playback: { ...report, zones: { advertising: reportedZone } } });
+    const html = render({ ...actual, layout: { ...actual.layout, business_percentage: 0, advertising_percentage: 100 }, playback: { ...report, zones: { advertising: reportedZone } } });
     assert.match(html, /<video[^>]*object-cover/);
+    assert.doesNotMatch(html, /Diseño anterior|70\/30/);
     assert.doesNotMatch(html, /<video[^>]*loop|<video[^>]*autoPlay/);
 });
 
@@ -161,14 +156,15 @@ test('video position extrapolates playing reports only and never crosses item du
 
 test('live and fallback identify actual source while disclosing separate browser buffering', () => {
     const live = { id: 3, type: 'live_stream', url: '/live', live: { provider: 'youtube', original_url: 'https://www.youtube.com/watch?v=abcdefghijk', source_id: 'abcdefghijk', embed_url: '/live/embed/3?signature=test' } };
-    const html = render({ ...actual, playback: { ...report, zones: { advertising: { ...reportedZone, source: 'live', media: live } } } });
+    const full = { ...actual, layout: { ...actual.layout, business_percentage: 0, advertising_percentage: 100 } };
+    const html = render({ ...full, playback: { ...report, zones: { advertising: { ...reportedZone, source: 'live', media: live } } } });
     assert.match(html, /<iframe/);
     assert.match(html, /propio búfer/);
-    const fallback = render({ ...actual, playback: { ...report, zones: { advertising: { ...reportedZone, source: 'live_fallback', media: image } } } });
+    const fallback = render({ ...full, playback: { ...report, zones: { advertising: { ...reportedZone, source: 'live_fallback', media: image } } } });
     assert.match(fallback, /Reserva de directo/);
     assert.match(fallback, /<img/);
     assert.doesNotMatch(fallback, /<iframe/);
-    const hls = render({ ...actual, playback: { ...report, zones: { advertising: { ...reportedZone, source: 'live', media: { ...live, live: { provider: 'hls', original_url: '/channel.m3u8' } } } } } });
+    const hls = render({ ...full, playback: { ...report, zones: { advertising: { ...reportedZone, source: 'live', media: { ...live, live: { provider: 'hls', original_url: '/channel.m3u8' } } } } } });
     assert.match(hls, /object-cover bg-black/);
 });
 

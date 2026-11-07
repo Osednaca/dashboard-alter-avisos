@@ -28,7 +28,7 @@ class ValidateLiveCampaign
                 'audio' => ['required', 'boolean'], 'size_acknowledged' => ['accepted'],
             ]);
             if ($validator->fails()) {
-                throw ValidationException::withMessages(['creatives' => 'Revisa el horario, la zona y la confirmación del tamaño del directo antes de publicar.']);
+                throw ValidationException::withMessages(['creatives' => 'Revisa el horario y la confirmación del tamaño del directo antes de publicar.']);
             }
             if (! empty($config['fallback_media_id']) && ! MediaAsset::query()->advertising()->ready()->whereIn('type', ['image', 'video'])->whereKey($config['fallback_media_id'])->exists()) {
                 throw ValidationException::withMessages(['creatives' => 'El archivo de respaldo ya no está disponible. Selecciona otro o la lista normal.']);

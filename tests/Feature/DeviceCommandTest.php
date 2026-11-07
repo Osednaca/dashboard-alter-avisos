@@ -31,6 +31,23 @@ class DeviceCommandTest extends TestCase
         ]);
     }
 
+    public function test_legacy_layout_commands_cannot_be_issued_or_delivered(): void
+    {
+        $device = Device::factory()->create();
+        $this->actingAs($this->superAdmin())
+            ->postJson("/admin/devices/{$device->id}/commands", ['command' => 'CHANGE_LAYOUT'])
+            ->assertUnprocessable()->assertJsonValidationErrors('command');
+        $this->assertDatabaseCount('device_commands', 0);
+
+        $legacy = app(IssueDeviceCommand::class)->handle($device, DeviceCommandType::ChangeLayout, ['layout_id' => 123]);
+        $normal = app(IssueDeviceCommand::class)->handle($device, DeviceCommandType::Mute);
+        $this->withToken($device->issueToken())->getJson('/api/v1/device/commands')
+            ->assertOk()->assertJsonCount(1, 'commands')->assertJsonPath('commands.0.id', $normal->id);
+        $this->assertDatabaseHas('device_commands', ['id' => $legacy->id, 'status' => 'pending']);
+        $this->assertSame(0, $device->commands()->deliverable()->count());
+        $this->postJson("/api/v1/device/commands/{$legacy->id}/result", ['status' => 'completed'])->assertOk();
+    }
+
     public function test_devices_poll_and_complete_commands(): void
     {
         $device = Device::factory()->create();

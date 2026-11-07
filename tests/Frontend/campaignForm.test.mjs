@@ -82,3 +82,20 @@ test('editing retains business inclusion and exclusion while filtering other leg
         { target_type: 'city', target_id: 3, target_value: '', is_exclusion: false },
     ]);
 });
+
+
+test('targeting feedback always explains exclusions and renders server validation errors', async () => {
+    const React = (await import('react')).default;
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const componentSource = readFileSync(new URL('../../resources/js/Components/app/TargetingFeedback.tsx', import.meta.url), 'utf8');
+    const compiled = ts.transpileModule(componentSource, { compilerOptions: { module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.React } }).outputText;
+    globalThis.__campaignTestReact = React;
+    const component = await import(`data:text/javascript;base64,${Buffer.from('const React = globalThis.__campaignTestReact;\n' + compiled).toString('base64')}`);
+    try {
+        const html = renderToStaticMarkup(React.createElement(component.TargetingFeedback, { error: 'Destino no disponible' }));
+        assert.match(html, /Destino no disponible/);
+        assert.match(html, /solo hay exclusiones/);
+        assert.match(html, /reglas de inclusión/);
+        assert.match(renderToStaticMarkup(React.createElement(component.TargetingFeedback)), /solo hay exclusiones/);
+    } finally { delete globalThis.__campaignTestReact; }
+});

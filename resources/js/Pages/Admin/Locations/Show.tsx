@@ -30,7 +30,6 @@ export default function LocationShow({
         { key: 'status', header: 'Estado', cell: (row) => <StatusBadge value={row.status} /> },
         { key: 'version', header: 'App', cell: (row) => <span className="metric text-muted">{row.app_version ?? '—'}</span> },
         { key: 'last_seen', header: 'Última señal', cell: (row) => <span className="text-muted">{formatRelative(row.last_seen_at)}</span> },
-        { key: 'layout', header: 'Layout', cell: (row) => <span className="text-muted">{row.current_layout?.name ?? '—'}</span> },
     ];
 
     return (

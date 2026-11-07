@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Domain\Devices\Models\Device;
+use App\Domain\Media\Models\Layout;
 use App\Domain\Media\Models\MediaAsset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\CreatesUsers;
@@ -37,6 +38,22 @@ class DeviceDiagnosticsTest extends TestCase
         $this->get("/admin/devices/{$other->id}")->assertOk()
             ->assertInertia(fn ($page) => $page->has('heartbeats', 0)->has('failures', 1)->where('failures.0.error_code', 'VIDEO_STALLED'));
         $this->actingAs($this->businessUser($other->business))->get("/admin/devices/{$device->id}")->assertForbidden();
+    }
+
+    public function test_device_detail_does_not_expose_unused_historical_layout_options(): void
+    {
+        $layout = Layout::query()->create([
+            'name' => 'Formato historico 70/30', 'orientation' => 'landscape',
+            'business_percentage' => 70, 'advertising_percentage' => 30,
+        ]);
+        $device = Device::factory()->create(['current_layout_id' => $layout->id]);
+
+        $this->actingAs($this->superAdmin())->get("/admin/devices/{$device->id}")
+            ->assertOk()
+            ->assertDontSee('Formato historico 70/30')
+            ->assertDontSee('70 / 30')
+            ->assertInertia(fn ($page) => $page->component('Admin/Devices/Show')
+                ->has('options.businesses')->missing('options.layouts')->missing('device.current_layout'));
     }
 
     public function test_diagnostics_validate_shape_and_remain_optional_for_older_players(): void
