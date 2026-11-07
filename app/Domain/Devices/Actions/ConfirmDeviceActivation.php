@@ -2,6 +2,7 @@
 
 namespace App\Domain\Devices\Actions;
 
+use App\Domain\Businesses\Actions\ReconcileBusinessCampaigns;
 use App\Domain\Devices\Enums\ActivationStatus;
 use App\Domain\Devices\Enums\DeviceStatus;
 use App\Domain\Devices\Events\DeviceConnected;
@@ -54,18 +55,26 @@ class ConfirmDeviceActivation
                 ? ($device->current_layout_id ?? Layout::query()->where('is_default', true)->value('id'))
                 : $this->createPortraitLayout($deviceName)->id;
 
-            $device->fill([
-                'business_id' => $activation->business_id,
-                'location_id' => $activation->location_id,
-                'name' => $deviceName,
-                'uuid' => $deviceUuid,
-                'activation_code' => $activation->code,
-                'app_version' => $appVersion,
-                'status' => DeviceStatus::Online,
-                'last_seen_at' => now(),
-                'last_ip' => $ip,
-                'current_layout_id' => $layoutId,
-            ])->save();
+            $reconcile = ! $device->exists || (int) $device->business_id !== (int) $activation->business_id;
+            $save = function () use ($device, $activation, $deviceName, $deviceUuid, $appVersion, $ip, $layoutId) {
+                return tap($device->fill([
+                    'business_id' => $activation->business_id,
+                    'location_id' => $activation->location_id,
+                    'name' => $deviceName,
+                    'uuid' => $deviceUuid,
+                    'activation_code' => $activation->code,
+                    'app_version' => $appVersion,
+                    'status' => DeviceStatus::Online,
+                    'last_seen_at' => now(),
+                    'last_ip' => $ip,
+                    'current_layout_id' => $layoutId,
+                ]), fn (Device $device) => $device->save());
+            };
+            if ($reconcile) {
+                app(ReconcileBusinessCampaigns::class)->handle($save);
+            } else {
+                $save();
+            }
 
             if ($activation->city_id && ($city = City::query()->find($activation->city_id))) {
                 app(UpdateCityCampaigns::class)->handle(

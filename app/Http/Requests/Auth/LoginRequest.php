@@ -53,7 +53,7 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        if (! $this->user()->hasPermission(...EnsureStaff::PERMISSIONS)) {
+        if (! EnsureStaff::allows($this->user())) {
             Auth::logout();
 
             throw ValidationException::withMessages([

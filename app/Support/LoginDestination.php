@@ -54,7 +54,7 @@ class LoginDestination
         $user = $request->user();
 
         if (in_array('staff', $middleware, true)) {
-            if (! $user->hasPermission(...EnsureStaff::PERMISSIONS)) {
+            if (! EnsureStaff::allows($user)) {
                 return $home;
             }
         } else {

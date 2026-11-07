@@ -86,8 +86,7 @@ class SettingsController extends Controller
         ]);
 
         $ids = Permission::query()->whereIn('name', $data['permissions'] ?? [])->pluck('id');
-        $legacyIds = $role->permissions()->where(fn ($q) => $q->where('permissions.name', 'like', 'business.%')
-            ->orWhere('permissions.name', 'like', 'businesses.%'))->pluck('permissions.id');
+        $legacyIds = $role->permissions()->where(fn ($q) => $q->where('permissions.name', 'like', 'business.%'))->pluck('permissions.id');
 
         $role->permissions()->sync($ids->merge($legacyIds)->unique());
 
@@ -101,9 +100,9 @@ class SettingsController extends Controller
     {
         $groups = [];
         foreach (PermissionEnum::grouped() as $name => $permissions) {
-            $visible = array_values(array_filter($permissions, fn ($permission) => ! str_starts_with($permission['value'], 'business.') && ! str_starts_with($permission['value'], 'businesses.')));
+            $visible = array_values(array_filter($permissions, fn ($permission) => ! str_starts_with($permission['value'], 'business.')));
             if ($visible !== []) {
-                $groups[$name === 'Negocios' ? 'Ubicaciones' : $name] = $visible;
+                $groups[$name] = $visible;
             }
         }
 

@@ -64,7 +64,7 @@ class LedCityScopeTest extends TestCase
 
     public function test_legacy_campaign_rules_are_hidden_and_unchanged_when_editing(): void
     {
-        $included = Business::factory()->create(['name' => 'Local anterior']);
+        $included = Business::factory()->create(['name' => 'Local anterior', 'category' => 'other']);
         $excluded = Business::factory()->create(['category' => 'restaurant']);
         $a = Device::factory()->online()->create(['business_id' => $included->id]);
         $b = Device::factory()->online()->create(['business_id' => $excluded->id]);
@@ -87,26 +87,27 @@ class LedCityScopeTest extends TestCase
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->assertSame($before, $resolver->devicesFor($campaign->fresh())->pluck('devices.id')->all());
         $this->assertDatabaseHas('campaign_targets', ['campaign_id' => $campaign->id, 'target_type' => 'business_category', 'target_value' => 'restaurant', 'is_exclusion' => true]);
-        $this->get('/admin/businesses')->assertNotFound();
+        $this->get('/admin/businesses')->assertOk();
     }
 
     public function test_role_editor_hides_legacy_permissions_without_deleting_them_on_save(): void
     {
         $admin = $this->superAdmin();
         $role = Role::query()->where('name', 'operator')->firstOrFail();
-        $legacy = Permission::query()->where('name', 'businesses.view')->firstOrFail();
+        $legacy = Permission::query()->where('name', 'business.dashboard.view')->firstOrFail();
         $role->permissions()->syncWithoutDetaching([$legacy->id]);
         $page = $this->actingAs($admin)->get('/admin/settings')->assertOk();
         $groups = $page->inertiaProps('permissionGroups');
         foreach ($groups as $permissions) {
             foreach ($permissions as $permission) {
-                $this->assertStringNotContainsString('business', $permission['value']);
+                $this->assertFalse(str_starts_with($permission['value'], 'business.'));
             }
         }
         $this->put("/admin/settings/roles/{$role->id}/permissions", ['permissions' => ['devices.view']])
             ->assertSessionHasNoErrors();
         $this->assertTrue($role->fresh()->permissions()->whereKey($legacy->id)->exists());
         $this->put("/admin/settings/roles/{$role->id}/permissions", ['permissions' => ['businesses.edit']])
-            ->assertSessionHasErrors('permissions.0');
+            ->assertSessionHasNoErrors();
+        $this->assertTrue($role->fresh()->permissions()->where('name', 'businesses.edit')->exists());
     }
 }

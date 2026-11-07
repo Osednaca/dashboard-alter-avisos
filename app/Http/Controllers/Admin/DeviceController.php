@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Businesses\Actions\ReconcileBusinessCampaigns;
 use App\Domain\Businesses\Models\Business;
 use App\Domain\Devices\Actions\AssignActivation;
 use App\Domain\Devices\Actions\BuildDeviceManifest;
@@ -47,7 +48,7 @@ class DeviceController extends Controller
             ->when($request->filled('location_id'), fn ($q) => $q->where('location_id', $request->integer('location_id')))
             ->when($request->filled('city'), fn ($q) => $q->whereHas('cities', fn ($qq) => $qq->where('cities.name', $request->string('city'))->where('cities.status', 'active')))
             ->when($request->filled('app_version'), fn ($q) => $q->where('app_version', $request->string('app_version')))
-            ->with(['cities', 'currentLayout'])
+            ->with(['business', 'cities', 'currentLayout'])
             ->orderBy($request->string('sort', 'name')->toString(), $request->string('direction', 'asc')->toString())
             ->paginate(15)
             ->withQueryString()
@@ -64,7 +65,7 @@ class DeviceController extends Controller
     {
         $this->authorize('view', $device);
 
-        $device->load(['cities', 'currentLayout', 'currentPlaylist']);
+        $device->load(['business', 'cities', 'currentLayout', 'currentPlaylist']);
 
         $commands = $device->commands()->with('creator')->latest()->limit(20)->get()
             ->map(fn ($command) => EntityPresenter::deviceCommand($command));
@@ -125,6 +126,7 @@ class DeviceController extends Controller
                 'requires_confirmation' => $type->requiresConfirmation(),
             ])->all(),
             'options' => [
+                'businesses' => request()->user()->hasPermission('devices.manage') ? Business::query()->where('slug', '!=', Business::INTERNAL_SLUG)->orderBy('name')->get(['id', 'name']) : [],
                 'layouts' => Layout::query()->get()->map(fn ($layout) => ['id' => $layout->id, 'name' => $layout->name, 'ratio' => $layout->ratioLabel()])->all(),
             ],
         ]);
@@ -144,6 +146,25 @@ class DeviceController extends Controller
         ]);
 
         return back()->with('success', "Comando «{$type->label()}» enviado a {$device->name}.");
+    }
+
+    public function assignBusiness(Request $request, Device $device, ReconcileBusinessCampaigns $reconcile): RedirectResponse
+    {
+        $this->authorize('update', $device);
+        $data = $request->validate([
+            'business_id' => ['required', 'integer', Rule::exists('businesses', 'id')->where(fn ($q) => $q->where('slug', '!=', Business::INTERNAL_SLUG))],
+        ]);
+        $reconcile->handle(function () use ($device, $data) {
+            $locked = Device::query()->lockForUpdate()->findOrFail($device->id);
+            $old = $locked->business_id;
+            // Keep the old location as historical targeting metadata; cities are independent.
+            $locked->forceFill(['business_id' => $data['business_id']])->save();
+            app(RecordAudit::class)->handle('device.business.changed', $locked, ['business_id' => $old], ['business_id' => $locked->business_id]);
+
+            return $locked;
+        });
+
+        return back()->with('success', 'Negocio asignado al aviso LED.');
     }
 
     public function sync(Device $device, BuildDeviceManifest $builder): RedirectResponse
@@ -212,7 +233,7 @@ class DeviceController extends Controller
         $this->authorize('viewAny', Device::class);
 
         $activations = DeviceActivation::query()
-            ->with('city')
+            ->with(['business', 'city'])
             ->latest()
             ->limit(50)
             ->get()
@@ -221,6 +242,7 @@ class DeviceController extends Controller
         return Inertia::render('Admin/Devices/Activations', [
             'activations' => $activations,
             'cities' => City::query()->where('status', 'active')->orderBy('name')->get(['id', 'name', 'state']),
+            'businesses' => request()->user()->hasPermission('devices.manage') ? Business::query()->where('slug', '!=', Business::INTERNAL_SLUG)->orderBy('name')->get(['id', 'name']) : [],
         ]);
     }
 
@@ -230,13 +252,14 @@ class DeviceController extends Controller
 
         $data = $request->validate([
             'device_name' => ['nullable', 'string', 'max:160'],
+            'business_id' => ['nullable', 'integer', Rule::exists('businesses', 'id')->where(fn ($q) => $q->where('slug', '!=', Business::INTERNAL_SLUG))],
             'city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')->where(fn ($q) => $q->where('status', 'active')->whereNull('deleted_at'))],
         ]);
 
         // Existing installations retain the association required by the device schema.
         // New unlocated notices use a private system record instead of a restaurant.
-        $businessId = $activation->business_id ?? Business::query()->firstOrCreate(
-            ['slug' => 'avisos-led-interno'],
+        $businessId = $data['business_id'] ?? $activation->business_id ?? Business::query()->firstOrCreate(
+            ['slug' => Business::INTERNAL_SLUG],
             ['name' => 'Avisos LED', 'category' => 'other', 'status' => 'active', 'timezone' => config('app.timezone')],
         )->id;
 
