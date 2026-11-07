@@ -21,7 +21,7 @@ class PreviewCampaignTargetsRequest extends FormRequest
         return [
             'targets' => ['present', 'array', 'max:200'],
             'targets.*' => ['required', 'array'],
-            'targets.*.target_type' => ['required', 'string', Rule::in([CampaignTargetType::City->value, CampaignTargetType::Device->value])],
+            'targets.*.target_type' => ['required', 'string', Rule::in([CampaignTargetType::City->value, CampaignTargetType::Device->value, CampaignTargetType::Business->value])],
             'targets.*.target_id' => ['nullable', 'integer'],
             'targets.*.target_value' => ['nullable', 'string', 'max:160'],
             'targets.*.is_exclusion' => ['boolean'],

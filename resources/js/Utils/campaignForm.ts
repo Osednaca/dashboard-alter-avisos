@@ -47,7 +47,7 @@ export function initialCampaignValues(campaign: FormCampaign | null, selectedMed
             : selectedMedia.map((media) => ({ media_asset_id: media.id, duration: Math.min(86400, Math.max(3, Math.round(media.duration ?? 10))), weight: 10,
                 ...(media.type?.value === 'live_stream' ? { configuration: { display_mode: 'fullscreen', audio: false, starts_at: '', ends_at: '', fallback_media_id: null, size_acknowledged: false } } : {}),
             })) as CreativeInput[],
-        targets: (campaign?.targets ?? []).filter((target) => !['business', 'business_category', 'location', 'state', 'country'].includes(target.target_type)).map((target) => ({
+        targets: (campaign?.targets ?? []).filter((target) => !['business_category', 'location', 'state', 'country'].includes(target.target_type)).map((target) => ({
             target_type: target.target_type,
             target_id: target.target_id ?? '',
             target_value: target.target_value ?? '',

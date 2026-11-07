@@ -101,6 +101,7 @@ class QuickPlayController extends Controller
             [
                 'device_ids' => $request->input('device_ids', []),
                 'city_ids' => $request->input('city_ids', []),
+                'business_ids' => $request->input('business_ids', []),
             ],
         );
 
@@ -190,6 +191,13 @@ class QuickPlayController extends Controller
                     'device_ids' => $city->devices->pluck('id')->all(),
                     'devices_count' => $city->devices->count(),
                 ])->all(),
+            'businesses' => $this->businessesQuery()->where('slug', '!=', Business::INTERNAL_SLUG)->orderBy('name')
+                ->with(['devices' => fn ($q) => $q->whereNotIn('devices.status', [DeviceStatus::Disabled->value, DeviceStatus::PendingActivation->value])])
+                ->get()->map(fn (Business $business) => [
+                    'id' => $business->id,
+                    'name' => $business->name,
+                    'device_ids' => $business->devices->pluck('id')->all(),
+                ])->all(),
             'displayModes' => collect([QuickPlayDisplayMode::Fullscreen])
                 ->map(fn (QuickPlayDisplayMode $mode) => [
                     'value' => $mode->value,
@@ -197,7 +205,7 @@ class QuickPlayController extends Controller
                     'description' => $mode->description(),
                 ])
                 ->all(),
-            'scopes' => collect([QuickPlayScope::Devices, QuickPlayScope::Cities, QuickPlayScope::All])
+            'scopes' => collect([QuickPlayScope::Devices, QuickPlayScope::Cities, QuickPlayScope::Businesses, QuickPlayScope::All])
                 ->map(fn (QuickPlayScope $scope) => ['value' => $scope->value, 'label' => $scope->label()])
                 ->all(),
             'counts' => [

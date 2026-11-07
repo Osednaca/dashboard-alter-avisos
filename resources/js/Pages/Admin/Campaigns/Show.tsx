@@ -35,6 +35,7 @@ interface TargetRow {
     target_type: EnumValue;
     target_id: number | null;
     target_value: string | null;
+    target_name?: string | null;
     is_exclusion: boolean;
 }
 
@@ -196,9 +197,9 @@ export default function CampaignShow({
                                     targets.map((target) => (
                                         <Badge key={target.id} tone={target.is_exclusion ? 'danger' : 'info'}>
                                             {target.is_exclusion ? 'Excluye ' : ''}
-                                            {['business', 'business_category', 'location', 'state', 'country'].includes(target.target_type.value)
+                                            {['business_category', 'location', 'state', 'country'].includes(target.target_type.value)
                                                 ? 'Segmentación anterior'
-                                                : `${target.target_type.label}${target.target_value ? `: ${target.target_value}` : ''}`}
+                                                : `${target.target_type.label}${target.target_name ? `: ${target.target_name}` : target.target_value ? `: ${target.target_value}` : ''}`}
                                         </Badge>
                                     ))
                                 )}

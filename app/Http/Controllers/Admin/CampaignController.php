@@ -10,6 +10,7 @@ use App\Domain\Campaigns\Enums\CampaignStatus;
 use App\Domain\Campaigns\Enums\CampaignTargetType;
 use App\Domain\Campaigns\Models\Campaign;
 use App\Domain\Campaigns\Models\CampaignTarget;
+use App\Domain\Campaigns\Support\EditableCampaignTargets;
 use App\Domain\Devices\Models\Device;
 use App\Domain\Locations\Models\City;
 use App\Domain\Media\Models\MediaAsset;
@@ -23,6 +24,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -126,6 +128,7 @@ class CampaignController extends Controller
         $this->authorize('view', $campaign);
 
         $campaign->load(['advertiser', 'creatives.mediaAsset', 'targets']);
+        [$businessNames, $editableTargets, $hasHiddenTargets] = $this->targetVisibility($campaign);
 
         $statsQuery = $campaign->dailyStats()->where('stat_date', '>=', today()->subDays(29));
 
@@ -160,8 +163,9 @@ class CampaignController extends Controller
                 'status' => EntityPresenter::enum($creative->status),
                 'media' => $creative->mediaAsset ? EntityPresenter::mediaAsset($creative->mediaAsset) : null,
             ]),
-            'targets' => $campaign->targets->filter(fn ($target) => in_array($target->target_type->value, ['city', 'device'], true))->values()->map(fn ($target) => EntityPresenter::campaignTarget($target)),
-            'hasLegacyTargets' => $campaign->targets->contains(fn ($target) => ! in_array($target->target_type->value, ['city', 'device'], true)),
+            'targets' => $editableTargets->map(fn ($target) => [...EntityPresenter::campaignTarget($target),
+                'target_name' => $target->target_type === CampaignTargetType::Business ? ($businessNames[$target->target_id] ?? null) : null]),
+            'hasLegacyTargets' => $hasHiddenTargets,
             'targetSummary' => $targets->summary($campaign),
             'targetDevices' => $targetDevices,
             'analytics' => ['series' => $series, 'totals' => $totals],
@@ -173,6 +177,7 @@ class CampaignController extends Controller
         $this->authorize('update', $campaign);
 
         $campaign->load(['advertiser', 'creatives' => fn ($query) => $query->orderBy('position')->orderBy('id'), 'targets']);
+        [, $editableTargets, $hasHiddenTargets] = $this->targetVisibility($campaign);
 
         return Inertia::render('Admin/Campaigns/Form', [
             'campaign' => [
@@ -183,8 +188,8 @@ class CampaignController extends Controller
                     'duration' => $c->duration,
                     'weight' => $c->weight,
                 ]),
-                'has_legacy_targets' => $campaign->targets->contains(fn ($target) => ! in_array($target->target_type->value, ['city', 'device'], true)),
-                'targets' => $campaign->targets->filter(fn ($target) => in_array($target->target_type->value, ['city', 'device'], true))->values()->map(fn (CampaignTarget $target) => [
+                'has_legacy_targets' => $hasHiddenTargets,
+                'targets' => $editableTargets->map(fn (CampaignTarget $target) => [
                     'target_type' => $target->target_type->value,
                     'target_id' => $target->target_id,
                     'target_value' => $target->target_value,
@@ -340,7 +345,7 @@ class CampaignController extends Controller
      */
     protected function syncTargets(Campaign $campaign, array $targets): void
     {
-        $campaign->targets()->whereIn('target_type', ['city', 'device'])->delete();
+        app(EditableCampaignTargets::class)->deleteEditable($campaign);
 
         foreach ($targets as $target) {
             $campaign->targets()->create([
@@ -350,6 +355,17 @@ class CampaignController extends Controller
                 'is_exclusion' => (bool) ($target['is_exclusion'] ?? false),
             ]);
         }
+    }
+
+    /** @return array{array<int, string>, Collection, bool} */
+    private function targetVisibility(Campaign $campaign): array
+    {
+        $rules = app(EditableCampaignTargets::class);
+        $businessNames = $rules->businesses()->pluck('name', 'id')->all();
+        $ids = array_map('intval', array_keys($businessNames));
+        $visible = $campaign->targets->filter(fn ($target) => $rules->isEditable($target, $ids))->values();
+
+        return [$businessNames, $visible, $visible->count() !== $campaign->targets->count()];
     }
 
     /**
@@ -377,6 +393,7 @@ class CampaignController extends Controller
             ]),
             'creatives' => MediaAsset::query()->advertising()->ready()->latest()->get()->map(fn ($asset) => EntityPresenter::mediaAsset($asset)),
             'cities' => City::query()->where('status', 'active')->orderBy('name')->get(['id', 'name', 'state', 'country']),
+            'businesses' => app(EditableCampaignTargets::class)->businesses()->orderBy('name')->get(['id', 'name']),
             'devices' => Device::query()->orderBy('name')->get(['id', 'name']),
             'counts' => [
                 'screens' => Device::query()->count(),

@@ -33,6 +33,7 @@ interface Options {
     advertisers: Array<{ id: number; name: string; status: { value: string; label: string } }>;
     creatives: MediaEntity[];
     cities: Array<{ id: number; name: string; state: string; country: string }>;
+    businesses: Array<{ id: number; name: string }>;
     devices: Array<{ id: number; name: string }>;
     counts: { screens: number; cities: number };
 }
@@ -48,6 +49,7 @@ const steps = [
 
 const targetTypes: Option[] = [
     { value: 'city', label: 'Ubicación (ciudad)' },
+    { value: 'business', label: 'Negocio' },
     { value: 'device', label: 'Aviso LED' },
 ];
 
@@ -471,6 +473,8 @@ function TargetBuilder({
             case 'city':
                 return options.cities.map((city) => ({ value: String(city.id), label: [city.name, city.state, city.country].filter(Boolean).join(' · ') }));
 
+            case 'business':
+                return options.businesses.map((business) => ({ value: String(business.id), label: business.name }));
             case 'device':
                 return options.devices.map((device) => ({ value: String(device.id), label: device.name }));
             default:
@@ -478,7 +482,7 @@ function TargetBuilder({
         }
     };
 
-    const isEntity = ['city', 'device'].includes(draft.target_type);
+    const isEntity = ['city', 'business', 'device'].includes(draft.target_type);
     const draftOptions = optionsFor(draft.target_type);
 
     const add = () => {

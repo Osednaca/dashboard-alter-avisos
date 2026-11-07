@@ -77,13 +77,14 @@ class LedCityScopeTest extends TestCase
         $before = $resolver->devicesFor($campaign)->pluck('devices.id')->all();
         $this->assertSame([$a->id], $before);
         $this->assertNotContains($b->id, $before);
-        $this->actingAs($this->superAdmin())->get("/admin/campaigns/{$campaign->id}/edit")->assertOk()
-            ->assertInertia(fn ($page) => $page->where('campaign.has_legacy_targets', true)->has('campaign.targets', 0)
-                ->missing('options.businesses')->missing('options.categories'));
+        $response = $this->actingAs($this->superAdmin())->get("/admin/campaigns/{$campaign->id}/edit")->assertOk()
+            ->assertInertia(fn ($page) => $page->where('campaign.has_legacy_targets', true)->has('campaign.targets', 1)
+                ->has('options.businesses')->missing('options.categories'));
+        $targets = $response->inertiaProps('campaign.targets');
         $this->put("/admin/campaigns/{$campaign->id}", [
             'advertiser_id' => $campaign->advertiser_id, 'name' => 'Editada', 'starts_at' => today()->toDateString(),
             'ends_at' => today()->addDays(3)->toDateString(), 'priority' => 5,
-            'creatives' => [['media_asset_id' => $media->id, 'duration' => 15, 'weight' => 1]], 'targets' => [],
+            'creatives' => [['media_asset_id' => $media->id, 'duration' => 15, 'weight' => 1]], 'targets' => $targets,
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->assertSame($before, $resolver->devicesFor($campaign->fresh())->pluck('devices.id')->all());
         $this->assertDatabaseHas('campaign_targets', ['campaign_id' => $campaign->id, 'target_type' => 'business_category', 'target_value' => 'restaurant', 'is_exclusion' => true]);
