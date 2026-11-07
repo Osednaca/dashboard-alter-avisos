@@ -23,6 +23,7 @@ import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Progress } from '@/Components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { AdminLayout } from '@/Layouts/AdminLayout';
 import { usePermissions } from '@/Hooks/usePermissions';
@@ -72,6 +73,7 @@ export default function DeviceShow({
     commandTypes,
     adminPinConfigured,
     canManagePin,
+    options,
 }: {
     device: DeviceEntity;
     commands: CommandEntity[];
@@ -82,7 +84,9 @@ export default function DeviceShow({
     commandTypes: CommandType[];
     adminPinConfigured: boolean;
     canManagePin: boolean;
+    options: { businesses: Array<{ id: number; name: string }> };
 }) {
+    const [businessId, setBusinessId] = useState(device.business ? String(device.business.id) : '');
     const [pendingCommand, setPendingCommand] = useState<CommandType | null>(null);
     const [confirmingRevoke, setConfirmingRevoke] = useState(false);
     const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -112,7 +116,7 @@ export default function DeviceShow({
             <PageHeader
                 eyebrow="Aviso LED"
                 title={device.name}
-                description={`${device.cities?.map((city) => city.name).join(', ') || 'Sin ciudad'} · ${device.current_layout?.name ?? 'Sin layout'} ${device.current_layout ? `(${device.current_layout.ratio})` : ''}`}
+                description={device.cities?.map((city) => city.name).join(', ') || 'Sin ciudad'}
                 actions={
                     <>
                         <StatusBadge value={device.status} />
@@ -194,8 +198,19 @@ export default function DeviceShow({
                             <CardTitle>Contenido actual</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm">
-                            <Row label="Layout" value={device.current_layout?.name ?? '—'} />
-                            <Row label="Lista de reproducción" value={device.current_playlist?.name ?? '—'} />
+                            <Row label="Negocio" value={device.business?.name ?? 'Sin asignar'} />
+                            {can('devices.manage') ? (
+                                <div className="flex flex-wrap gap-2">
+                                    <Select value={businessId || undefined} onValueChange={setBusinessId}>
+                                        <SelectTrigger className="w-full sm:w-64"><SelectValue placeholder="Selecciona un negocio" /></SelectTrigger>
+                                        <SelectContent>{options.businesses.map((business) => <SelectItem key={business.id} value={String(business.id)}>{business.name}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                    <Button size="sm" variant="secondary" disabled={!businessId || businessId === String(device.business?.id ?? '')}
+                                        onClick={() => router.put(`/admin/devices/${device.id}/business`, { business_id: businessId }, { preserveScroll: true, onSuccess: () => toast.success('Negocio asignado.') })}>
+                                        Asignar negocio
+                                    </Button>
+                                </div>
+                            ) : null}
                             <Row label="Manifiesto activo" value={device.current_manifest_version ?? '—'} />
                             <Row label="Campaña asignada" value="Gestionada por la red publicitaria" />
                             <Row label="Última sincronización" value={formatRelative(device.last_sync_at)} />

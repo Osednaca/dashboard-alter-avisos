@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Domain\Advertisers\Models\Advertiser;
+use App\Domain\Businesses\Models\Business;
 use App\Domain\Campaigns\Models\Campaign;
 use App\Domain\Devices\Models\Device;
 use App\Domain\Locations\Models\City;
@@ -25,6 +26,15 @@ class SearchController extends Controller
         $user = $request->user();
         $like = '%'.$term.'%';
         $groups = [];
+
+        if ($user->hasPermission('businesses.view')) {
+            $groups[] = $this->group('Negocios', 'business', Business::query()
+                ->where('slug', '!=', Business::INTERNAL_SLUG)
+                ->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('contact_name', 'like', $like))
+                ->limit(5)->get()
+                ->map(fn (Business $business) => ['id' => $business->id, 'title' => $business->name,
+                    'subtitle' => null, 'href' => "/admin/businesses/{$business->id}"]));
+        }
 
         if ($user->hasPermission('devices.view')) {
             $groups[] = $this->group('Avisos LED', 'device', Device::query()

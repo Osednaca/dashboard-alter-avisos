@@ -73,7 +73,7 @@ class EntityPresenter
             'description' => $role->description,
             'is_system' => $role->is_system,
             'permissions' => $role->relationLoaded('permissions')
-                ? $role->permissions->pluck('name')->reject(fn ($name) => str_starts_with($name, 'business.') || str_starts_with($name, 'businesses.'))->values()->all()
+                ? $role->permissions->pluck('name')->reject(fn ($name) => str_starts_with($name, 'business.'))->values()->all()
                 : [],
             'users_count' => $role->users_count ?? null,
         ];
@@ -142,6 +142,8 @@ class EntityPresenter
             'name' => $device->name,
             'status' => self::enum($device->status),
             'is_online' => $device->isOnline(),
+            'business' => $device->relationLoaded('business') && $device->business && $device->business->slug !== Business::INTERNAL_SLUG
+                ? ['id' => $device->business->id, 'name' => $device->business->name] : null,
             'location' => null,
             'cities' => $device->relationLoaded('cities')
                 ? $device->cities->map(fn ($city) => ['id' => $city->id, 'name' => $city->name])->values()->all()
@@ -187,6 +189,8 @@ class EntityPresenter
             'device_uuid' => $activation->device_uuid,
             'device_name' => $activation->device_name,
             'assigned' => $activation->business_id !== null,
+            'business' => $activation->relationLoaded('business') && $activation->business && $activation->business->slug !== Business::INTERNAL_SLUG
+                ? ['id' => $activation->business->id, 'name' => $activation->business->name] : null,
             'city' => $activation->relationLoaded('city') && $activation->city
                 ? ['id' => $activation->city->id, 'name' => $activation->city->name]
                 : null,

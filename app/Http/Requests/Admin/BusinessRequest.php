@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Domain\Businesses\Enums\BusinessCategory;
 use App\Domain\Businesses\Enums\BusinessStatus;
+use App\Domain\Businesses\Models\Business;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,7 +26,7 @@ class BusinessRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:160'],
-            'slug' => ['nullable', 'string', 'max:180', 'alpha_dash', Rule::unique('businesses', 'slug')->ignore($businessId)],
+            'slug' => ['nullable', 'string', 'max:180', 'alpha_dash', Rule::notIn([Business::INTERNAL_SLUG]), Rule::unique('businesses', 'slug')->ignore($businessId)],
             'category' => ['required', Rule::enum(BusinessCategory::class)],
             'status' => ['required', Rule::enum(BusinessStatus::class)],
             'timezone' => ['required', 'string', 'timezone'],

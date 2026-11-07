@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\AndroidUpdateController;
 use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\BusinessController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DeviceController;
@@ -29,6 +30,13 @@ use Illuminate\Support\Facades\Route;
 Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('search', SearchController::class)->name('search');
 
+// Businesses
+Route::get('businesses', [BusinessController::class, 'index'])->middleware('permission:businesses.view')->name('businesses.index');
+Route::post('businesses', [BusinessController::class, 'store'])->middleware('permission:businesses.create')->name('businesses.store');
+Route::get('businesses/{business}', [BusinessController::class, 'show'])->middleware('permission:businesses.view')->name('businesses.show');
+Route::put('businesses/{business}', [BusinessController::class, 'update'])->middleware('permission:businesses.edit')->name('businesses.update');
+Route::delete('businesses/{business}', [BusinessController::class, 'destroy'])->middleware('permission:businesses.delete')->name('businesses.destroy');
+
 // Locations
 Route::get('locations', [LocationController::class, 'index'])->middleware('permission:locations.view')->name('locations.index');
 Route::post('locations', [LocationController::class, 'store'])->middleware('permission:locations.manage')->name('locations.store');
@@ -44,6 +52,7 @@ Route::post('activations/{activation}/assign', [DeviceController::class, 'assign
 Route::post('activations/{activation}/revoke', [DeviceController::class, 'revokeActivation'])->middleware('permission:devices.manage')->name('activations.revoke');
 Route::get('devices', [DeviceController::class, 'index'])->middleware('permission:devices.view')->name('devices.index');
 Route::get('devices/{device}', [DeviceController::class, 'show'])->middleware('permission:devices.view')->name('devices.show');
+Route::put('devices/{device}/business', [DeviceController::class, 'assignBusiness'])->middleware('permission:devices.manage')->name('devices.business');
 Route::post('devices/{device}/commands', [DeviceController::class, 'command'])->middleware('permission:devices.commands')->name('devices.commands');
 Route::post('devices/{device}/sync', [DeviceController::class, 'sync'])->middleware('permission:devices.manage')->name('devices.sync');
 Route::post('devices/{device}/toggle-status', [DeviceController::class, 'toggleStatus'])->middleware('permission:devices.manage')->name('devices.toggle-status');

@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Domain\Users\Enums\RoleEnum;
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,6 +15,7 @@ class EnsureStaff
      * kept out of the administrative area entirely while staff pass through.
      */
     public const PERMISSIONS = [
+        'businesses.view',
         'locations.view',
         'devices.view',
         'campaigns.view',
@@ -27,11 +30,21 @@ class EnsureStaff
         'quick_play.view',
     ];
 
+    public static function allows(User $user): bool
+    {
+        $roles = $user->roleNames();
+        if (count($roles) === 1 && $roles[0] === RoleEnum::BusinessUser->value) {
+            return false;
+        }
+
+        return $user->hasPermission(...self::PERMISSIONS);
+    }
+
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
-        if (! $user || ! $user->hasPermission(...self::PERMISSIONS)) {
+        if (! $user || ! self::allows($user)) {
             abort(403, 'Acceso restringido al personal de la plataforma.');
         }
 

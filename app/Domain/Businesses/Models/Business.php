@@ -29,6 +29,8 @@ class Business extends Model
 {
     use HasFactory;
 
+    public const INTERNAL_SLUG = 'avisos-led-interno';
+
     protected function casts(): array
     {
         return [

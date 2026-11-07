@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/Components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { AdminLayout } from '@/Layouts/AdminLayout';
+import { usePermissions } from '@/Hooks/usePermissions';
 import type { EnumValue } from '@/Types';
 import { formatRelative } from '@/Utils/format';
 
@@ -24,6 +25,7 @@ interface ActivationEntity {
     device_uuid: string | null;
     device_name: string | null;
     assigned: boolean;
+    business: { id: number; name: string } | null;
     city: { id: number; name: string } | null;
     app_version: string | null;
     ip_address: string | null;
@@ -32,14 +34,16 @@ interface ActivationEntity {
     created_at: string | null;
 }
 
-export default function Activations({ activations, cities }: { activations: ActivationEntity[]; cities: Array<{ id: number; name: string; state: string }> }) {
+export default function Activations({ activations, cities, businesses }: { activations: ActivationEntity[]; cities: Array<{ id: number; name: string; state: string }>; businesses: Array<{ id: number; name: string }> }) {
     const [selected, setSelected] = useState<ActivationEntity | null>(null);
+    const { can } = usePermissions();
 
-    const form = useForm({ city_id: '', device_name: '' });
+    const form = useForm({ city_id: '', business_id: '', device_name: '' });
 
     const openAssign = (activation: ActivationEntity) => {
         form.setData({
             city_id: activation.city ? String(activation.city.id) : '',
+            business_id: activation.business ? String(activation.business.id) : '',
             device_name: activation.device_name ?? '',
         });
         form.clearErrors();
@@ -62,7 +66,7 @@ export default function Activations({ activations, cities }: { activations: Acti
             header: 'Asignación',
             cell: (row) =>
                 row.assigned ? (
-                    <span className="text-muted">{row.city?.name ?? 'Asignado'}</span>
+                    <span className="text-muted">{[row.business?.name, row.city?.name].filter(Boolean).join(' · ') || 'Asignado'}</span>
                 ) : (
                     <span className="text-faint">Sin asignar</span>
                 ),
@@ -78,13 +82,13 @@ export default function Activations({ activations, cities }: { activations: Acti
                 <div className="flex justify-end">
                     <ActionMenu
                         items={[
-                            { label: 'Asignar aviso', icon: MapPin, onSelect: () => openAssign(row), hidden: row.status.value === 'claimed' },
+                            { label: 'Asignar aviso', icon: MapPin, onSelect: () => openAssign(row), hidden: !can('devices.manage') || row.status.value === 'claimed' },
                             {
                                 label: 'Revocar código',
                                 icon: Trash2,
                                 variant: 'danger',
                                 separatorBefore: true,
-                                hidden: row.status.value === 'claimed' || row.status.value === 'revoked',
+                                hidden: !can('devices.manage') || row.status.value === 'claimed' || row.status.value === 'revoked',
                                 onSelect: () =>
                                     router.post(`/admin/activations/${row.id}/revoke`, {}, {
                                         preserveScroll: true,
@@ -115,7 +119,7 @@ export default function Activations({ activations, cities }: { activations: Acti
             <div className="mt-4 rounded-card border border-line bg-surface p-4 text-xs text-muted">
                 <p className="flex items-center gap-2">
                     <KeyRound className="size-3.5 text-accent" />
-                    Flujo: la app solicita un código → el administrador lo asigna a una ciudad opcional → el aviso LED
+                    Flujo: la app solicita un código → el administrador asigna el negocio y la ciudad → el aviso LED
                     confirma y recibe su token.
                 </p>
             </div>
@@ -137,6 +141,14 @@ export default function Activations({ activations, cities }: { activations: Acti
                         <DialogTitle>Asignar código {selected?.code}</DialogTitle>
                     </DialogHeader>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <FormField label="Negocio (opcional)" error={form.errors.business_id}>
+                            <Select value={form.data.business_id || undefined} onValueChange={(value) => form.setData('business_id', value)} disabled={!businesses.length}>
+                                <SelectTrigger><SelectValue placeholder="Selecciona negocio" /></SelectTrigger>
+                                <SelectContent>
+                                    {businesses.map((business) => <SelectItem key={business.id} value={String(business.id)}>{business.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </FormField>
                         <FormField label="Ciudad (opcional)" error={form.errors.city_id}>
                             <Select value={form.data.city_id || undefined} onValueChange={(value) => form.setData('city_id', value)} disabled={!cities.length}>
                                 <SelectTrigger><SelectValue placeholder="Selecciona ciudad" /></SelectTrigger>

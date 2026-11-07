@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { Building2, Eye, MapPin, MonitorPlay, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Building2, Eye, MonitorPlay, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ActionMenu } from '@/Components/app/ActionMenu';
@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/Components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { AdminLayout } from '@/Layouts/AdminLayout';
+import { usePermissions } from '@/Hooks/usePermissions';
 import type { BusinessEntity, Option, Paginated } from '@/Types';
 import { formatNumber } from '@/Utils/format';
 
@@ -43,13 +44,14 @@ export default function BusinessesIndex({
     filters: Filters;
     options: Options;
 }) {
+    const { can } = usePermissions();
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState<BusinessEntity | null>(null);
     const [deleting, setDeleting] = useState<BusinessEntity | null>(null);
 
     const form = useForm({
         name: '',
-        category: 'restaurant',
+        category: 'other',
         status: 'onboarding',
         timezone: 'America/Bogota',
         contact_name: '',
@@ -122,16 +124,6 @@ export default function BusinessesIndex({
         },
         { key: 'category', header: 'Categoría', cell: (row) => <span className="text-muted">{row.category.label}</span> },
         {
-            key: 'locations',
-            header: 'Ubicaciones',
-            cell: (row) => (
-                <span className="inline-flex items-center gap-1.5 text-muted">
-                    <MapPin className="size-3.5 text-faint" />
-                    {row.locations_count}
-                </span>
-            ),
-        },
-        {
             key: 'devices',
             header: 'Avisos LED',
             cell: (row) => (
@@ -151,19 +143,6 @@ export default function BusinessesIndex({
                 </span>
             ),
         },
-        {
-            key: 'layout',
-            header: 'Layout actual',
-            cell: (row) =>
-                row.current_layout ? (
-                    <span className="text-muted">
-                        {row.current_layout.name}{' '}
-                        <span className="metric text-faint">{row.current_layout.ratio}</span>
-                    </span>
-                ) : (
-                    <span className="text-faint">—</span>
-                ),
-        },
         { key: 'status', header: 'Estado', cell: (row) => <StatusBadge value={row.status} /> },
         {
             key: 'actions',
@@ -175,12 +154,13 @@ export default function BusinessesIndex({
                     <ActionMenu
                         items={[
                             { label: 'Ver detalle', icon: Eye, onSelect: () => router.visit(`/admin/businesses/${row.id}`) },
-                            { label: 'Editar', icon: Pencil, onSelect: () => openEdit(row) },
+                            { label: 'Editar', icon: Pencil, onSelect: () => openEdit(row), hidden: !can('businesses.edit') },
                             {
                                 label: 'Eliminar',
                                 icon: Trash2,
                                 variant: 'danger',
                                 separatorBefore: true,
+                                hidden: !can('businesses.delete'),
                                 onSelect: () => setDeleting(row),
                             },
                         ]}
@@ -198,10 +178,10 @@ export default function BusinessesIndex({
                 title="Negocios"
                 description="Empresas que operan avisos LED en la red."
                 actions={
-                    <Button variant="primary" size="sm" onClick={openCreate}>
+                    can('businesses.create') ? <Button variant="primary" size="sm" onClick={openCreate}>
                         <Plus className="size-4" />
                         Nuevo negocio
-                    </Button>
+                    </Button> : null
                 }
             />
 
@@ -339,12 +319,12 @@ export default function BusinessesIndex({
                 open={!!deleting}
                 onOpenChange={(open) => (!open ? setDeleting(null) : null)}
                 title={`Eliminar ${deleting?.name ?? ''}`}
-                description="Se eliminarán sus ubicaciones, avisos LED y contenido asociado. Esta acción no se puede deshacer."
+                description="Solo puedes eliminar un negocio sin datos asociados. Si tiene avisos u otros registros vinculados, la eliminación será rechazada."
                 confirmLabel="Eliminar negocio"
                 onConfirm={() => {
                     if (!deleting) return;
                     router.delete(`/admin/businesses/${deleting.id}`, {
-                        onSuccess: () => toast.success('Negocio eliminado.'),
+                        onError: (errors) => toast.error(Object.values(errors)[0] ?? 'No se pudo eliminar el negocio.'),
                     });
                 }}
             />
