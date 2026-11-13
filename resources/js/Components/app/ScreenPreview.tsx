@@ -1,5 +1,5 @@
 import { Image as ImageIcon, RefreshCw } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Badge } from '@/Components/ui/badge';
 import { LivePreview } from '@/Components/app/LiveStreamDialog';
 import type { DevicePreviewData, PlaybackZone, PreviewMediaData } from '@/Types/preview';
@@ -56,7 +56,37 @@ function PreviewMedia({ media, zone, ageMs = 0 }: { media: PreviewMediaData | nu
     );
 }
 
-export function ScreenPreview({ preview, className }: { preview: DevicePreviewData | null; className?: string }) {
+function PreviewFrame({ children, led = false, portrait = false, rotation, aspect = '16 / 9' }: {
+    children: ReactNode; led?: boolean; portrait?: boolean; rotation?: number; aspect?: string;
+}) {
+    return <div data-preview-presentation={led ? 'led' : 'screen'} className={cn(
+        'relative mx-auto w-full',
+        led ? 'rounded-[3px] border border-[#48515b] bg-[#20272d] p-2 shadow-[inset_0_1px_0_#66717a,0_8px_18px_-10px_#000]'
+            : 'rounded-[20px] border border-line-strong bg-[#04080d] p-2.5 shadow-float',
+        !led && portrait ? 'max-w-[280px]' : '',
+    )}>
+        {led ? <div aria-hidden="true">
+            {['left-[3px] top-[3px]', 'right-[3px] top-[3px]', 'bottom-[3px] left-[3px]', 'bottom-[3px] right-[3px]'].map(position => (
+                <span key={position} className={cn('absolute size-1 rounded-full bg-[#8b949b] shadow-[inset_0_-1px_1px_#000]', position)} />
+            ))}
+        </div> : null}
+        <div data-preview-orientation={led || !portrait ? 'landscape' : 'portrait'} data-preview-rotation={rotation}
+            className={cn('relative flex overflow-hidden bg-black', led ? 'rounded-[1px]' : 'rounded-[12px]')}
+            style={{ aspectRatio: led ? '3 / 1' : aspect }}>
+            {children}
+            {led ? <div aria-hidden="true" data-preview-led-matrix="true" className="pointer-events-none absolute inset-0 z-[1]"
+                style={{
+                    backgroundImage: 'radial-gradient(circle, transparent 1px, rgb(0 0 0 / 0.55) 1.3px), radial-gradient(circle, rgb(150 170 180 / 0.14) 0.7px, transparent 1px), linear-gradient(to right, rgb(0 0 0 / 0.65) 1px, transparent 1px)',
+                    backgroundSize: '4px 4px, 4px 4px, 33.333% 100%',
+                }} /> : null}
+        </div>
+    </div>;
+}
+
+export function ScreenPreview({ preview, className, presentation = 'screen' }: {
+    preview: DevicePreviewData | null; className?: string; presentation?: 'screen' | 'led';
+}) {
+    const led = presentation === 'led';
     const report = preview?.playback;
     const [elapsed, setElapsed] = useState(0);
     useEffect(() => {
@@ -69,6 +99,9 @@ export function ScreenPreview({ preview, className }: { preview: DevicePreviewDa
         return () => { window.clearInterval(interval); window.clearTimeout(stale); };
     }, [report, preview?.checked_at]);
     if (!preview) {
+        if (led) return <div className={className}><PreviewFrame led>
+            <div className="relative z-10 flex size-full items-center justify-center p-3 text-center text-xs text-white/60">Sin avisos LED para previsualizar.</div>
+        </PreviewFrame></div>;
         return <div className="flex aspect-video items-center justify-center rounded-control border border-dashed border-line bg-inset text-xs text-muted">
             Sin avisos LED para previsualizar.
         </div>;
@@ -94,24 +127,24 @@ export function ScreenPreview({ preview, className }: { preview: DevicePreviewDa
         : 'Vista aproximada del contenido confirmado. Sin reporte de reproducción de la TV; no está sincronizada. Actualiza el APK para recibir el estado real.';
     const hasLive = fresh && media?.type === 'live_stream';
     const aspect = layout?.width_px && layout.height_px ? `${layout.width_px} / ${layout.height_px}` : portrait ? '9 / 16' : '16 / 9';
+    const orientationText = layout ? `${portrait ? 'Vertical' : 'Horizontal'} · ${layout.rotation}°` : 'Orientación sin confirmar';
 
     return <div className={cn('space-y-3', className)}>
         <div className="flex flex-wrap gap-2 text-xs text-fg">
             <Badge tone={fresh ? 'positive' : stale ? 'danger' : 'neutral'}>{fresh ? 'Estado reportado' : stale ? 'Reporte vencido' : 'Vista aproximada'}</Badge>
-            <Badge>{layout ? `${portrait ? 'Vertical' : 'Horizontal'} · ${layout.rotation}°` : 'Orientación sin confirmar'}</Badge>
+            <Badge title={led ? `Orientación reportada del dispositivo: ${orientationText}` : undefined}
+                aria-label={led ? `Aviso LED horizontal. Orientación reportada del dispositivo: ${orientationText}` : undefined}>
+                {led ? 'Aviso LED · Horizontal' : orientationText}
+            </Badge>
             {canShowContent && !stale && !sceneMasked ? <Badge>Pantalla completa</Badge> : null}
         </div>
-        <div className={cn('mx-auto rounded-[20px] border border-line-strong bg-[#04080d] p-2.5 shadow-float', portrait ? 'w-full max-w-[280px]' : 'w-full')}>
-            <div data-preview-orientation={portrait ? 'portrait' : 'landscape'} data-preview-rotation={layout?.rotation}
-                className="relative flex overflow-hidden rounded-[12px] bg-black"
-                style={{ aspectRatio: aspect }}>
-                {stale || sceneMasked ? <div className="flex size-full items-center justify-center p-4 text-center text-xs text-white/60">{statusText}</div>
-                    : canShowContent ? <div data-preview-zone="fullscreen" className="relative size-full overflow-hidden bg-black">
-                        <PreviewMedia key={media ? `${confirmedZone?.source}:${confirmedZone?.item_id}:${media.id}:${media.url}` : 'empty'} media={media} zone={confirmedZone} ageMs={ageMs} />
-                        {confirmedZone ? <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-black/80 px-1.5 py-0.5 text-[10px] text-white">{sourceLabels[confirmedZone.source]} · {stateLabels[confirmedZone.state]}</span> : null}
-                    </div> : <div className="flex size-full items-center justify-center p-4 text-center text-xs text-white/60">{layout && !fullLayout ? 'Formato anterior; reproducción a pantalla completa no verificable.' : 'Contenido aún sin confirmar.'}</div>}
-            </div>
-        </div>
+        <PreviewFrame led={led} portrait={portrait} rotation={layout?.rotation} aspect={aspect}>
+            {stale || sceneMasked ? <div className={cn('relative z-10 flex size-full items-center justify-center text-center text-xs text-white/60', led ? 'p-3' : 'p-4')}>{led && stale ? 'Reporte vencido o no verificable' : statusText}</div>
+                : canShowContent ? <div data-preview-zone="fullscreen" className="relative size-full overflow-hidden bg-black">
+                    <PreviewMedia key={media ? `${confirmedZone?.source}:${confirmedZone?.item_id}:${media.id}:${media.url}` : 'empty'} media={media} zone={confirmedZone} ageMs={ageMs} />
+                    {confirmedZone ? <span className="pointer-events-none absolute bottom-1 left-1 z-10 rounded bg-black/80 px-1.5 py-0.5 text-[10px] text-white">{sourceLabels[confirmedZone.source]} · {stateLabels[confirmedZone.state]}</span> : null}
+                </div> : <div className={cn('relative z-10 flex size-full items-center justify-center text-center text-xs text-white/60', led ? 'p-3' : 'p-4')}>{layout && !fullLayout ? 'Formato anterior; reproducción a pantalla completa no verificable.' : 'Contenido aún sin confirmar.'}</div>}
+        </PreviewFrame>
         <p role="status" className="text-xs text-muted">{statusText}{preview.pending_manifest_version ? ' Hay cambios pendientes de confirmar.' : ''}</p>
         {hasLive ? <p className="text-xs text-muted">El directo del navegador usa su propio búfer y puede mostrar un fotograma distinto al de la TV.</p> : null}
         <div className="flex flex-wrap items-start justify-between gap-3">

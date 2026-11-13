@@ -2,7 +2,6 @@ import { router, usePage } from '@inertiajs/react';
 import {
     Bell,
     ChevronDown,
-    Circle,
     LogOut,
     Menu,
     PanelLeftClose,
@@ -13,7 +12,6 @@ import {
     UserCog,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
-import { Badge } from '@/Components/ui/badge';
 import { Button } from '@/Components/ui/button';
 import {
     DropdownMenu,
@@ -36,7 +34,7 @@ export function TopNavigation({
     onToggleSidebar: () => void;
     onOpenMobileNav: () => void;
 }) {
-    const { auth, app, notifications } = usePage<PageProps>().props;
+    const { auth, notifications } = usePage<PageProps>().props;
     const user = auth.user;
     const unread = notifications?.unread ?? 0;
 
@@ -70,11 +68,6 @@ export function TopNavigation({
             </button>
 
             <div className="ml-auto flex shrink-0 items-center gap-2">
-                <Badge tone={app.env === 'production' ? 'positive' : 'info'} className="hidden md:inline-flex">
-                    <Circle className="size-1.5 fill-current" />
-                    {app.env === 'production' ? 'Producción' : `Entorno ${app.env}`}
-                </Badge>
-
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="relative" aria-label="Notificaciones">

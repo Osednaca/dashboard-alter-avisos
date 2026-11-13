@@ -283,21 +283,10 @@ export default function QuickPlayCreate({ options }: { options: Options }) {
                         </CardContent>
                     </Card>
 
-                    {/* 3. Modo de visualización */}
+                    {/* 3. Duración */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>3 · Modo de visualización</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            <p className="rounded-control border border-accent/60 bg-accent/10 p-3 text-xs font-medium text-fg">Pantalla completa</p>
-                            {errors.display_mode ? <p className="text-xs text-danger">{errors.display_mode}</p> : null}
-                        </CardContent>
-                    </Card>
-
-                    {/* 4. Duración */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>4 · Duración</CardTitle>
+                            <CardTitle>3 · Duración</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
                             {isVideo ? (
@@ -376,10 +365,6 @@ export default function QuickPlayCreate({ options }: { options: Options }) {
                             <CardContent className="space-y-3 text-sm">
                                 <SummaryRow label="Contenido" value={selectedMedia?.filename ?? 'Sin seleccionar'} />
                                 <SummaryRow
-                                    label="Modo"
-                                    value={options.displayModes.find((mode) => mode.value === data.display_mode)?.label ?? '—'}
-                                />
-                                <SummaryRow
                                     label="Destino"
                                     value={options.scopes.find((scope) => scope.value === data.scope)?.label ?? '—'}
                                 />
@@ -394,6 +379,7 @@ export default function QuickPlayCreate({ options }: { options: Options }) {
                                     desconectados se marcarán como no entregados.
                                 </div>
 
+                                {errors.display_mode ? <p className="text-xs text-danger">{errors.display_mode}</p> : null}
                                 <Button variant="primary" className="w-full" onClick={submit} disabled={!canSubmit || form.processing}>
                                     {form.processing ? <ImageIcon className="size-4 animate-pulse" /> : <Send className="size-4" />}
                                     Reproducir ahora
