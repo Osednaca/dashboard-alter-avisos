@@ -43,7 +43,7 @@ const preview = {
     playlist: null, manifest_version: '100', pending_manifest_version: '200', status: 'approximate',
     last_sync_at: null, checked_at: null,
 };
-const render = data => renderToStaticMarkup(React.createElement(ScreenPreview, { preview: data }));
+const render = (data, props = {}) => renderToStaticMarkup(React.createElement(ScreenPreview, { preview: data, ...props }));
 
 test('legacy divided preview is neutral and never reveals historical media or ratios', () => {
     const html = render(preview);
@@ -67,6 +67,31 @@ test('explicit zero and 180 remain horizontal while 270 is vertical', () => {
         assert.doesNotMatch(html, /Izquierda \/ derecha|70\/30/);
         assert.match(html, rotation % 180 ? /aspect-ratio:9 \/ 16/ : /aspect-ratio:16 \/ 9/);
         assert.doesNotMatch(html, /data-preview-zone=/);
+    }
+});
+
+test('LED cabinet stays horizontal for every reported rotation and portrait dimensions', () => {
+    for (const rotation of [0, 90, 180, 270]) {
+        const html = render({ ...preview, layout: { ...preview.layout, rotation, width_px: 1080, height_px: 1920 } }, { presentation: 'led' });
+        assert.match(html, /data-preview-presentation="led"/);
+        assert.match(html, /data-preview-led-matrix="true"/);
+        assert.match(html, /data-preview-orientation="landscape"/);
+        assert.match(html, /aspect-ratio:3 \/ 1/);
+        assert.match(html, new RegExp(`data-preview-rotation="${rotation}"`));
+        assert.match(html, /Aviso LED · Horizontal/);
+        assert.match(html, new RegExp(`Orientación reportada del dispositivo: ${rotation % 180 ? 'Vertical' : 'Horizontal'} · ${rotation}°`));
+        assert.doesNotMatch(html, />Vertical ·/);
+        assert.doesNotMatch(html, /max-w-\[280px\]|<img|<video/);
+    }
+});
+
+test('LED cabinet keeps its landscape frame without a device or confirmed orientation', () => {
+    for (const data of [null, { ...preview, layout: null, status: 'unconfirmed', advertising: null }]) {
+        const html = render(data, { presentation: 'led' });
+        assert.match(html, /aspect-ratio:3 \/ 1/);
+        assert.match(html, /data-preview-orientation="landscape"/);
+        assert.match(html, /Sin avisos LED para previsualizar|Contenido aún sin confirmar/);
+        assert.doesNotMatch(html, /<img|<video|<iframe|data-preview-zone=/);
     }
 });
 
@@ -138,6 +163,20 @@ test('stale and server-unverified state hide old media instead of falling back t
         assert.match(html, /Reporte vencido/);
         assert.doesNotMatch(html, /<video|<img|<iframe|data-preview-zone=/);
         assert.doesNotMatch(html, /Vista aproximada del contenido confirmado/);
+    }
+});
+
+test('LED presentation preserves fullscreen media and masks private or stale reports', () => {
+    const full = { ...actual, playback: { ...report, zones: { fullscreen: reportedZone } } };
+    const html = render(full, { presentation: 'led' });
+    assert.match(html, /data-preview-zone="fullscreen"/);
+    assert.match(html, /<video[^>]*src="\/confirmed.mp4"/);
+    for (const playback of [{ ...full.playback, fresh: false }, { ...full.playback, age_ms: 15001 },
+        ...['settings', 'pin', 'background', 'activation'].map(scene => ({ ...full.playback, scene }))]) {
+        const masked = render({ ...full, playback }, { presentation: 'led' });
+        assert.match(masked, /aspect-ratio:3 \/ 1/);
+        assert.doesNotMatch(masked, /<video|<img|<iframe|data-preview-zone=/);
+        assert.match(masked, /Reporte vencido|Configuración abierta|Acceso administrativo|segundo plano|TV en activación/);
     }
 });
 

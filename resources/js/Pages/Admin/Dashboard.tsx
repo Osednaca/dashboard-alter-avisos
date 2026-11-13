@@ -350,7 +350,7 @@ export default function Dashboard({ overview, screenPreview, previewDevices }: {
                                 {previewDevices.map(device => <option key={device.id} value={device.id}>{device.name}</option>)}
                             </select>
                         </label>
-                        <ScreenPreview preview={screenPreview} />
+                        <ScreenPreview preview={screenPreview} presentation="led" />
                     </CardContent>
                 </Card>
             </div>
