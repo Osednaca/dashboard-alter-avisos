@@ -354,7 +354,7 @@ export default function QuickPlayCreate({ options }: { options: Options }) {
                                 </Badge>
                             </CardHeader>
                             <CardContent>
-                                <QuickPlayPreview media={selectedMedia} displayMode={data.display_mode} />
+                                <QuickPlayPreview media={selectedMedia} displayMode={data.display_mode} presentation="led" />
                             </CardContent>
                         </Card>
 
